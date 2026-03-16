@@ -1,14 +1,16 @@
-import React, { useState } from "react";
-import { View, Text, StyleSheet, useColorScheme, TouchableOpacity } from "react-native";
 import { useRouter } from "expo-router";
+import React, { useState } from "react";
+import { StyleSheet, Text, TouchableOpacity, useColorScheme, View } from "react-native";
 
 import { Button } from "@/components/Button";
-import { Input } from "@/components/Input";
-import { FormContainer } from "@/components/FormContainer";
 import { ErrorMessage } from "@/components/ErrorMessage";
+import { FormContainer } from "@/components/FormContainer";
+import { Input } from "@/components/Input";
+import { useAuth } from "@/context/AuthContext";
 
 export default function LoginScreen() {
   const router = useRouter();
+  const { signIn } = useAuth();
   const scheme = useColorScheme();
   const dark = scheme === "dark";
   const styles = makeStyles(dark);
@@ -20,21 +22,14 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     setError(null);
-
-    // Basic validation
     if (!email || !password) {
       setError("Please enter your email and password.");
       return;
     }
-
     setLoading(true);
     try {
-      // TODO: Step 3 - replace with supabase.auth.signInWithPassword
-      // const { error } = await supabase.auth.signInWithPassword({ email, password });
-      // if (error) throw error;
-      // router.replace("/(tabs)");
-
-      // Temporary placeholder navigation
+      // TODO: Step 3 - replace signIn with supabase.auth.signInWithPassword
+      await signIn(email, password);
       router.replace("/(tabs)");
     } catch (err: any) {
       setError(err.message || "Login failed. Please try again.");
