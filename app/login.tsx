@@ -44,7 +44,11 @@ export default function LoginScreen() {
       subtitle="Sign in to your Anode account"
     >
       <ErrorMessage message={error} />
-
+      {/* Temporary NativeWind test */}
+      <Text className="mb-4 rounded-xl bg-red-500 px-4 py-3 text-center text-white">
+        NativeWind is working
+      </Text>
+      
       <Input
         label="Email"
         placeholder="you@example.com"
@@ -77,7 +81,7 @@ export default function LoginScreen() {
       />
 
       <View style={styles.registerRow}>
-        <Text style={styles.registerText}>Don't have an account? </Text>
+        <Text style={styles.registerText}>Don&apos;t have an account? </Text>
         <TouchableOpacity onPress={() => router.push("/register")}>
           <Text style={styles.registerLink}>Sign Up</Text>
         </TouchableOpacity>
