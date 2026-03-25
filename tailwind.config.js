@@ -7,7 +7,7 @@ module.exports = {
       colors: {
         // Replace these with real brand values when design system is received
         brand: {
-          DEFAULT: "#26AFFF",
+          DEFAULT: "#4F333A",
           dark: "#26AFFF",
         },
         surface: {

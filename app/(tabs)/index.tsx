@@ -1,7 +1,7 @@
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/Button';
-import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ScreenWrapper } from '@/components/ScreenWrapper';
+import { Text, TouchableOpacity, View } from 'react-native';
 import { useColorScheme } from 'nativewind';
 
 export default function HomeScreen() {
@@ -10,8 +10,7 @@ export default function HomeScreen() {
   const isDark = colorScheme === 'dark';
 
   return (
-    <SafeAreaView className="flex-1 bg-white dark:bg-black">
-      <ScrollView className="flex-1 px-6" contentContainerStyle={{ paddingBottom: 48 }}>
+    <ScreenWrapper scroll className="px-6">
 
         <View className="mt-8 flex-row items-center justify-between">
           <Text className="text-4xl font-bold text-brand dark:text-brand-dark">
@@ -78,7 +77,6 @@ export default function HomeScreen() {
 
         <Button label="Sign Out" onPress={signOut} variant="secondary" />
 
-      </ScrollView>
-    </SafeAreaView>
+    </ScreenWrapper>
   );
 }
