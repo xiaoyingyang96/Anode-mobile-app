@@ -5,25 +5,60 @@
 
 import { Platform } from 'react-native';
 
-const tintColorLight = '#0a7ea4';
-const tintColorDark = '#fff';
+const tintColorLight = '#26AFFF';
+const tintColorDark = '#26AFFF';
 
 export const Colors = {
   light: {
-    text: '#11181C',
-    background: '#fff',
+    text: '#111827',
+    background: '#F3F4F6',
     tint: tintColorLight,
-    icon: '#687076',
-    tabIconDefault: '#687076',
+    icon: '#4B5563',
+    tabIconDefault: '#4B5563',
     tabIconSelected: tintColorLight,
   },
   dark: {
-    text: '#ECEDEE',
-    background: '#151718',
+    text: '#EEEEEF',
+    background: '#050B14',
     tint: tintColorDark,
-    icon: '#9BA1A6',
-    tabIconDefault: '#9BA1A6',
+    icon: '#AEB0B4',
+    tabIconDefault: '#AEB0B4',
     tabIconSelected: tintColorDark,
+  },
+};
+
+export const WatchlistColors = {
+  primary: '#26AFFF',
+  primaryMuted: 'rgba(38, 175, 255, 0.15)',
+  primaryMutedStrong: 'rgba(38, 175, 255, 0.25)',
+  tickerUp: {
+    light: '#059669',
+    dark: '#07CDA5',
+  },
+  tickerDown: {
+    light: '#DC2626',
+    dark: '#FA3364',
+  },
+  cardBg: {
+    light: '#F9FAFB',
+    dark: '#0D1117',
+  },
+  surface: {
+    light: '#FFFFFF',
+    dark: '#111827',
+  },
+  border: {
+    light: '#E5E7EB',
+    dark: '#1F2937',
+  },
+  textSecondary: {
+    light: '#4B5563',
+    dark: '#AEB0B4',
+  },
+  deleteRed: '#DC2626',
+  tabActiveBg: {
+    light: 'rgba(38, 175, 255, 0.10)',
+    dark: 'rgba(38, 175, 255, 0.18)',
   },
 };
 
