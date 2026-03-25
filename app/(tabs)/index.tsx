@@ -1,180 +1,84 @@
-// import { Image } from 'expo-image';
-// import { Platform, StyleSheet } from 'react-native';
-
-// import { HelloWave } from '@/components/hello-wave';
-// import ParallaxScrollView from '@/components/parallax-scroll-view';
-// import { ThemedText } from '@/components/themed-text';
-// import { ThemedView } from '@/components/themed-view';
-// import { Link } from 'expo-router';
-
-// export default function HomeScreen() {
-//   return (
-//     <ParallaxScrollView
-//       headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-//       headerImage={
-//         <Image
-//           source={require('@/assets/images/partial-react-logo.png')}
-//           style={styles.reactLogo}
-//         />
-//       }>
-//       <ThemedView style={styles.titleContainer}>
-//         <ThemedText type="title">Welcome!</ThemedText>
-//         <HelloWave />
-//       </ThemedView>
-//       <ThemedView style={styles.stepContainer}>
-//         <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-//         <ThemedText>
-//           Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-//           Press{' '}
-//           <ThemedText type="defaultSemiBold">
-//             {Platform.select({
-//               ios: 'cmd + d',
-//               android: 'cmd + m',
-//               web: 'F12',
-//             })}
-//           </ThemedText>{' '}
-//           to open developer tools.
-//         </ThemedText>
-//       </ThemedView>
-//       <ThemedView style={styles.stepContainer}>
-//         <Link href="/modal">
-//           <Link.Trigger>
-//             <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-//           </Link.Trigger>
-//           <Link.Preview />
-//           <Link.Menu>
-//             <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-//             <Link.MenuAction
-//               title="Share"
-//               icon="square.and.arrow.up"
-//               onPress={() => alert('Share pressed')}
-//             />
-//             <Link.Menu title="More" icon="ellipsis">
-//               <Link.MenuAction
-//                 title="Delete"
-//                 icon="trash"
-//                 destructive
-//                 onPress={() => alert('Delete pressed')}
-//               />
-//             </Link.Menu>
-//           </Link.Menu>
-//         </Link>
-
-//         <ThemedText>
-//           {`Tap the Explore tab to learn more about what's included in this starter app.`}
-//         </ThemedText>
-//       </ThemedView>
-//       <ThemedView style={styles.stepContainer}>
-//         <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-//         <ThemedText>
-//           {`When you're ready, run `}
-//           <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-//           <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-//           <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-//           <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-//         </ThemedText>
-//       </ThemedView>
-//     </ParallaxScrollView>
-//   );
-// }
-
-// const styles = StyleSheet.create({
-//   titleContainer: {
-//     flexDirection: 'row',
-//     alignItems: 'center',
-//     gap: 8,
-//   },
-//   stepContainer: {
-//     gap: 8,
-//     marginBottom: 8,
-//   },
-//   reactLogo: {
-//     height: 178,
-//     width: 290,
-//     bottom: 0,
-//     left: 0,
-//     position: 'absolute',
-//   },
-// });
-import { Image } from 'expo-image';
-import { Platform, StyleSheet, Text, TouchableOpacity } from 'react-native';
-
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
 import { useAuth } from '@/context/AuthContext';
+import { Button } from '@/components/Button';
+import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useColorScheme } from 'nativewind';
 
 export default function HomeScreen() {
-  const { signOut } = useAuth();
+  const { user, signOut } = useAuth();
+  const { colorScheme, setColorScheme } = useColorScheme();
+  const isDark = colorScheme === 'dark';
 
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
+    <SafeAreaView className="flex-1 bg-white dark:bg-black">
+      <ScrollView className="flex-1 px-6" contentContainerStyle={{ paddingBottom: 48 }}>
 
-      {/* Temporary sign out button - will be moved when Junjie redesigns this screen */}
-      <ThemedView style={styles.stepContainer}>
-        <TouchableOpacity style={styles.signOutBtn} onPress={signOut}>
-          <Text style={styles.signOutText}>Sign Out</Text>
-        </TouchableOpacity>
-      </ThemedView>
+        <View className="mt-8 flex-row items-center justify-between">
+          <Text className="text-4xl font-bold text-brand dark:text-brand-dark">
+            Anode
+          </Text>
+          <TouchableOpacity
+            onPress={() => setColorScheme(isDark ? 'light' : 'dark')}
+            className="rounded-full bg-surface px-4 py-2 dark:bg-surface-dark"
+          >
+            <Text className="text-sm font-medium text-black dark:text-white">
+              {isDark ? '☀️ Light' : '🌙 Dark'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+        <Text className="mb-8 text-sm text-muted dark:text-muted-dark">
+          Foundation Sprint — Demo
+        </Text>
 
-    </ParallaxScrollView>
+        {/* Auth */}
+        <View className="mb-5 rounded-2xl bg-surface p-5 dark:bg-surface-dark">
+          <Text className="mb-3 text-xs font-semibold uppercase tracking-widest text-brand dark:text-brand-dark">
+            Auth
+          </Text>
+          <Text className="text-xs text-muted dark:text-muted-dark">Signed in as</Text>
+          <Text className="text-sm font-medium text-black dark:text-white">{user?.email ?? '—'}</Text>
+          <Text className="mt-2 text-xs text-muted dark:text-muted-dark">User ID</Text>
+          <Text className="text-sm font-medium text-black dark:text-white" numberOfLines={1}>
+            {user?.id ?? '—'}
+          </Text>
+        </View>
+
+        {/* Component Library */}
+        <View className="mb-5 rounded-2xl bg-surface p-5 dark:bg-surface-dark">
+          <Text className="mb-3 text-xs font-semibold uppercase tracking-widest text-brand dark:text-brand-dark">
+            Component Library
+          </Text>
+          <Button label="Primary Button" onPress={() => {}} style={{ marginBottom: 10 }} />
+          <Button label="Secondary Button" onPress={() => {}} variant="secondary" style={{ marginBottom: 10 }} />
+          <Button label="Ghost Button" onPress={() => {}} variant="ghost" style={{ marginBottom: 10 }} />
+          <Button label="Loading State" onPress={() => {}} loading style={{ marginBottom: 10 }} />
+          <Button label="Disabled State" onPress={() => {}} disabled />
+        </View>
+
+        {/* Navigation Stack */}
+        <View className="mb-8 rounded-2xl bg-surface p-5 dark:bg-surface-dark">
+          <Text className="mb-3 text-xs font-semibold uppercase tracking-widest text-brand dark:text-brand-dark">
+            Navigation Stack
+          </Text>
+          {[
+            '/ → auth check',
+            '/login → sign in',
+            '/register → sign up',
+            '/forgot-password → reset',
+            '/(tabs) → main app',
+          ].map((route) => (
+            <Text
+              key={route}
+              className="border-b border-black/10 py-1 font-mono text-xs text-black dark:border-white/10 dark:text-white"
+            >
+              {route}
+            </Text>
+          ))}
+        </View>
+
+        <Button label="Sign Out" onPress={signOut} variant="secondary" />
+
+      </ScrollView>
+    </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
-  },
-  signOutBtn: {
-    backgroundColor: '#FF3B30',
-    padding: 14,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  signOutText: {
-    color: '#FFFFFF',
-    fontWeight: '600',
-    fontSize: 16,
-  },
-});
