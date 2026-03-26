@@ -1,14 +1,16 @@
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
-import { Text, TouchableOpacity, useColorScheme, View, StyleSheet } from "react-native";
+import { StyleSheet, Text, TouchableOpacity, useColorScheme, View } from "react-native";
 
 import { Button } from "@/components/Button";
 import { ErrorMessage } from "@/components/ErrorMessage";
 import { FormContainer } from "@/components/FormContainer";
 import { Input } from "@/components/Input";
+import { useAuth } from "@/context/AuthContext";
 
 export default function RegisterScreen() {
   const router = useRouter();
+  const { signUp } = useAuth();
   const scheme = useColorScheme();
   const dark = scheme === "dark";
   const styles = makeStyles(dark);
@@ -19,7 +21,20 @@ export default function RegisterScreen() {
   const [loading, setLoading] = useState(false);
 
   const handleRegister = async () => {
-    setError("Registration coming soon.");
+    setError(null);
+    if (!email || !password) {
+      setError("Please enter your email and password.");
+      return;
+    }
+    setLoading(true);
+    try {
+      await signUp(email, password);
+      router.replace("/(tabs)");
+    } catch (err: any) {
+      setError(err.message || "Registration failed. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
