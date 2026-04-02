@@ -1,11 +1,11 @@
 import React from 'react';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import {
   View,
   Text,
   TouchableOpacity,
   ActivityIndicator,
   StyleSheet,
-  useColorScheme,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 

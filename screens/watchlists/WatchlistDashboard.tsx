@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Animated, StyleSheet, useColorScheme } from 'react-native';
+import { View, Animated, StyleSheet } from 'react-native';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Watchlist } from '@/types/watchlist';

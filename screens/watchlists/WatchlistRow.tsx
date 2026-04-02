@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import {
   View,
   Text,
@@ -7,7 +8,6 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   StyleSheet,
-  useColorScheme,
   useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';

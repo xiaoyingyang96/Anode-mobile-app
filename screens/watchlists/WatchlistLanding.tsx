@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import {
   View,
   Text,
@@ -6,7 +7,6 @@ import {
   Image,
   TouchableOpacity,
   StyleSheet,
-  useColorScheme,
   Animated,
   Easing,
   useWindowDimensions,
@@ -170,9 +170,31 @@ function AnimatedBorderMockup({ dark, mockupWidth }: MockupProps) {
   );
 }
 
-/* ---------- FAQ accordion item ---------- */
+/* ---------- FAQ accordion item — animated expand/collapse ---------- */
 function FaqItem({ q, a, dark }: { q: string; a: string; dark: boolean }) {
   const [open, setOpen] = useState(false);
+  const heightAnim  = useRef(new Animated.Value(0)).current;
+  const rotateAnim  = useRef(new Animated.Value(0)).current;
+
+  const toggle = () => {
+    const next = !open;
+    setOpen(next);
+    const toVal = next ? 1 : 0;
+    // Height uses JS driver (layout property); rotation uses native driver
+    Animated.timing(heightAnim, {
+      toValue: toVal,
+      duration: 260,
+      useNativeDriver: false,
+    }).start();
+    Animated.timing(rotateAnim, {
+      toValue: toVal,
+      duration: 220,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const maxHeight = heightAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 200] });
+  const rotate    = rotateAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '180deg'] });
 
   return (
     <View
@@ -185,30 +207,30 @@ function FaqItem({ q, a, dark }: { q: string; a: string; dark: boolean }) {
       ]}
     >
       <TouchableOpacity
-        onPress={() => setOpen((v) => !v)}
+        onPress={toggle}
         style={styles.faqSummary}
         activeOpacity={0.75}
       >
-        <Text
-          style={[styles.faqQuestion, { color: dark ? '#EEEEEF' : '#111827' }]}
-        >
+        <Text style={[styles.faqQuestion, { color: dark ? '#EEEEEF' : '#111827' }]}>
           {q}
         </Text>
-        <Ionicons
-          name={open ? 'chevron-up' : 'chevron-down'}
-          size={18}
-          color={WatchlistColors.textSecondary[dark ? 'dark' : 'light']}
-        />
+        <Animated.View style={{ transform: [{ rotate }] }}>
+          <Ionicons
+            name="chevron-down"
+            size={18}
+            color={WatchlistColors.textSecondary[dark ? 'dark' : 'light']}
+          />
+        </Animated.View>
       </TouchableOpacity>
-      {open && (
+
+      {/* Content is always mounted; maxHeight drives open/close */}
+      <Animated.View style={{ overflow: 'hidden', maxHeight }}>
         <View style={styles.faqDetails}>
-          <Text
-            style={[styles.faqAnswer, { color: WatchlistColors.textSecondary[dark ? 'dark' : 'light'] }]}
-          >
+          <Text style={[styles.faqAnswer, { color: WatchlistColors.textSecondary[dark ? 'dark' : 'light'] }]}>
             {a}
           </Text>
         </View>
-      )}
+      </Animated.View>
     </View>
   );
 }

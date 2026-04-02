@@ -1,6 +1,7 @@
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
-import { StyleSheet, Text, TouchableOpacity, useColorScheme, View } from "react-native";
+import { useColorScheme } from "@/hooks/use-color-scheme";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 import { Button } from "@/components/Button";
 import { ErrorMessage } from "@/components/ErrorMessage";

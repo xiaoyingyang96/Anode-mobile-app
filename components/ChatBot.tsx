@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import React, { useRef, useState } from "react";
+import { useColorScheme } from "@/hooks/use-color-scheme";
 import {
     FlatList,
     KeyboardAvoidingView,
@@ -10,7 +11,6 @@ import {
     Text,
     TextInput,
     TouchableOpacity,
-    useColorScheme,
     View,
 } from "react-native";
 

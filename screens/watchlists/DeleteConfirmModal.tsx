@@ -1,4 +1,5 @@
 import React from 'react';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import {
   Modal,
   View,
@@ -6,7 +7,6 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   StyleSheet,
-  useColorScheme,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { WatchlistColors } from '@/constants/theme';

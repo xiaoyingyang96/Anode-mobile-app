@@ -1,4 +1,5 @@
 import React, { useMemo, useRef } from 'react';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import {
   View,
   Text,
@@ -8,7 +9,6 @@ import {
   Linking,
   Image,
   StyleSheet,
-  useColorScheme,
   useWindowDimensions,
   Alert,
   ActivityIndicator,

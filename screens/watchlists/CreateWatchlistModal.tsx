@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import {
   Modal,
   View,
@@ -7,7 +8,6 @@ import {
   TextInput,
   ActivityIndicator,
   StyleSheet,
-  useColorScheme,
   KeyboardAvoidingView,
   Platform,
   Alert,

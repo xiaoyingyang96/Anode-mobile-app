@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import {
   View,
   Text,
@@ -6,7 +7,6 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
-  useColorScheme,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { WatchlistColors } from '@/constants/theme';

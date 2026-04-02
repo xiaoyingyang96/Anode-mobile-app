@@ -1,5 +1,6 @@
 import { GovernmentPolicy, useGovPolicies } from "@/hooks/useGovPolicies";
 import React from "react";
+import { useColorScheme } from "@/hooks/use-color-scheme";
 import {
   ActivityIndicator,
   FlatList,
@@ -7,7 +8,6 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  useColorScheme,
   View,
 } from "react-native";
 

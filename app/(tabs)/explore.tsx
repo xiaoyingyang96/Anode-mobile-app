@@ -4,7 +4,8 @@ import MobilePolicyUpdatesSection from "@/screens/explore/MobilePolicyUpdatesSec
 import MobileSectionTabs, { MobileSectionId } from "@/screens/explore/MobileSectionTabs";
 import MobileTopStoriesSection from "@/screens/explore/MobileTopStoriesSection";
 import React, { useState } from "react";
-import { SafeAreaView, StyleSheet, Text, useColorScheme, View } from "react-native";
+import { useColorScheme } from "@/hooks/use-color-scheme";
+import { SafeAreaView, StyleSheet, Text, View } from "react-native";
 
 export default function ExploreScreen() {
   const [activeSection, setActiveSection] = useState<MobileSectionId>("assets");

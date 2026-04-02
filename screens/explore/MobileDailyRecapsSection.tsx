@@ -1,6 +1,7 @@
 import { DailyRecap, useDailyRecaps } from "@/hooks/useDailyRecaps";
 import { Ionicons } from "@expo/vector-icons";
 import React, { useState } from "react";
+import { useColorScheme } from "@/hooks/use-color-scheme";
 import {
     ActivityIndicator,
     FlatList,
@@ -11,7 +12,6 @@ import {
     StyleSheet,
     Text,
     TouchableOpacity,
-    useColorScheme,
     View,
 } from "react-native";
 

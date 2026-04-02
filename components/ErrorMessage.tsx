@@ -1,5 +1,6 @@
 import React from "react";
-import { View, Text, StyleSheet, useColorScheme } from "react-native";
+import { useColorScheme } from "@/hooks/use-color-scheme";
+import { View, Text, StyleSheet } from "react-native";
 
 interface ErrorMessageProps {
   message: string | null | undefined;

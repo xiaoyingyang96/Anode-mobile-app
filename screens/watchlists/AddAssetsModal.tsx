@@ -1,4 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import {
   Modal,
   View,
@@ -8,7 +9,6 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   StyleSheet,
-  useColorScheme,
   Alert,
   Image,
 } from 'react-native';

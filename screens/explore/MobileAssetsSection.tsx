@@ -1,12 +1,12 @@
 import { AssetRow, useMarketData } from "@/hooks/useMarketData";
 import React, { useState } from "react";
+import { useColorScheme } from "@/hooks/use-color-scheme";
 import {
     ActivityIndicator,
     FlatList,
     StyleSheet,
     Text,
     TouchableOpacity,
-    useColorScheme,
     View,
 } from "react-native";
 
