@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   View,
   Text,
+  Animated,
   ScrollView,
   TouchableOpacity,
   StyleSheet,
@@ -17,6 +18,64 @@ interface WatchlistTopbarProps {
   onSelectWatchlist: (id: number) => void;
   onRequestDelete: (id: number) => void;
   onCreateNew: () => void;
+}
+
+interface WatchlistTabProps {
+  wl: Watchlist;
+  isActive: boolean;
+  dark: boolean;
+  s: ReturnType<typeof makeStyles>;
+  onSelect: () => void;
+  onRequestDelete: (id: number) => void;
+}
+
+function WatchlistTab({ wl, isActive, dark, s, onSelect, onRequestDelete }: WatchlistTabProps) {
+  // Close button fade — port of SentimentX opacity 0→1 on selected/hover (0.2s)
+  const closeOpacity = useRef(new Animated.Value(isActive ? 1 : 0)).current;
+
+  useEffect(() => {
+    Animated.timing(closeOpacity, {
+      toValue: isActive ? 1 : 0,
+      duration: 200,
+      useNativeDriver: true,
+    }).start();
+  }, [isActive]);
+
+  return (
+    <TouchableOpacity
+      onPress={onSelect}
+      style={[s.tab, isActive && s.tabActive]}
+      activeOpacity={0.75}
+    >
+      <Text style={[s.tabLabel, isActive && s.tabLabelActive]} numberOfLines={1}>
+        {wl.name}
+      </Text>
+
+      <View style={[s.countBadge, isActive && s.countBadgeActive]}>
+        <Text style={[s.countText, isActive && s.countTextActive]}>
+          {wl.assets_count}
+        </Text>
+      </View>
+
+      {!wl.is_default && (
+        <Animated.View style={[s.closeBtn, { opacity: closeOpacity }]}>
+          <TouchableOpacity
+            onPress={(e) => {
+              e.stopPropagation();
+              onRequestDelete(wl.id);
+            }}
+            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+          >
+            <Ionicons
+              name="close"
+              size={13}
+              color={isActive ? WatchlistColors.primary : WatchlistColors.textSecondary[dark ? 'dark' : 'light']}
+            />
+          </TouchableOpacity>
+        </Animated.View>
+      )}
+    </TouchableOpacity>
+  );
 }
 
 export default function WatchlistTopbar({
@@ -37,44 +96,17 @@ export default function WatchlistTopbar({
         style={s.scroll}
         contentContainerStyle={s.scrollContent}
       >
-        {watchlists.map((wl) => {
-          const isActive = wl.id === activeId;
-          return (
-            <TouchableOpacity
-              key={wl.id}
-              onPress={() => onSelectWatchlist(wl.id)}
-              style={[s.tab, isActive && s.tabActive]}
-              activeOpacity={0.75}
-            >
-              <Text style={[s.tabLabel, isActive && s.tabLabelActive]} numberOfLines={1}>
-                {wl.name}
-              </Text>
-
-              <View style={[s.countBadge, isActive && s.countBadgeActive]}>
-                <Text style={[s.countText, isActive && s.countTextActive]}>
-                  {wl.assets_count}
-                </Text>
-              </View>
-
-              {!wl.is_default && (
-                <TouchableOpacity
-                  onPress={(e) => {
-                    e.stopPropagation();
-                    onRequestDelete(wl.id);
-                  }}
-                  style={s.closeBtn}
-                  hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                >
-                  <Ionicons
-                    name="close"
-                    size={13}
-                    color={isActive ? WatchlistColors.primary : WatchlistColors.textSecondary[dark ? 'dark' : 'light']}
-                  />
-                </TouchableOpacity>
-              )}
-            </TouchableOpacity>
-          );
-        })}
+        {watchlists.map((wl) => (
+          <WatchlistTab
+            key={wl.id}
+            wl={wl}
+            isActive={wl.id === activeId}
+            dark={dark}
+            s={s}
+            onSelect={() => onSelectWatchlist(wl.id)}
+            onRequestDelete={onRequestDelete}
+          />
+        ))}
       </ScrollView>
 
       {/* "+ New Watchlist" button — fixed, does not scroll */}

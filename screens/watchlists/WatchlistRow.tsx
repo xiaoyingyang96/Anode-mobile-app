@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
+  Animated,
   Image,
   TouchableOpacity,
   ActivityIndicator,
@@ -12,6 +13,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { WatchlistColors } from '@/constants/theme';
 import { Row } from '@/types/watchlist';
+import { usePriceFlash } from '@/hooks/usePriceFlash';
 
 interface WatchlistRowProps {
   item: Row;
@@ -66,8 +68,32 @@ export default function WatchlistRow({ item, index, onDelete, isDeleting, isWide
     ? WatchlistColors.tickerUp[dark ? 'dark' : 'light']
     : WatchlistColors.tickerDown[dark ? 'dark' : 'light'];
 
+  // Staggered pop-in on mount (AOS-equivalent: fade-up per row)
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(14)).current;
+  useEffect(() => {
+    const delay = Math.min(index * 55, 330); // stagger up to 6 rows, cap beyond that
+    Animated.parallel([
+      Animated.timing(fadeAnim, { toValue: 1, duration: 320, delay, useNativeDriver: true }),
+      Animated.timing(slideAnim, { toValue: 0, duration: 320, delay, useNativeDriver: true }),
+    ]).start();
+  }, []);
+
+  // Price flash animation — port of SentimentX's PriceColorPulse / useColorPulse
+  const { progress: priceProgress, dir: priceDir } = usePriceFlash(item.price);
+  const normalColor = dark ? '#EEEEEF' : '#111827';
+  const flashColor = priceProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange:
+      priceDir === 'up'
+        ? [normalColor, WatchlistColors.tickerUp[dark ? 'dark' : 'light']]
+        : priceDir === 'down'
+        ? [normalColor, WatchlistColors.tickerDown[dark ? 'dark' : 'light']]
+        : [normalColor, normalColor],
+  });
+
   return (
-    <View style={s.row}>
+    <Animated.View style={[s.row, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
       <Text style={s.index}>{index + 1}</Text>
 
       <View style={s.assetCell}>
@@ -99,7 +125,9 @@ export default function WatchlistRow({ item, index, onDelete, isDeleting, isWide
       )}
 
       <View style={s.priceCell}>
-        <Text style={s.price}>{formatPrice(item.price)}</Text>
+        <Animated.Text style={[s.price, { color: flashColor }]}>
+          {formatPrice(item.price)}
+        </Animated.Text>
         <Text style={[s.changePct, { color: pctColor }]}>{formatPct(item.changePct)}</Text>
       </View>
 
@@ -115,7 +143,7 @@ export default function WatchlistRow({ item, index, onDelete, isDeleting, isWide
           <Ionicons name="trash-outline" size={18} color={WatchlistColors.deleteRed} />
         )}
       </TouchableOpacity>
-    </View>
+    </Animated.View>
   );
 }
 
@@ -200,7 +228,6 @@ const makeStyles = (dark: boolean) =>
     price: {
       fontSize: 14,
       fontWeight: '600',
-      color: dark ? '#EEEEEF' : '#111827',
     },
     changePct: {
       fontSize: 12,

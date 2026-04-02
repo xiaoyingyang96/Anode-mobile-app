@@ -1,7 +1,8 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef } from 'react';
 import {
   View,
   Text,
+  Animated,
   FlatList,
   TouchableOpacity,
   Linking,
@@ -57,28 +58,43 @@ function NewsCard({ story, dark }: { story: NewsStory; dark: boolean }) {
   const s = newsStyles(dark);
   const accentColor = sentimentColor(story.naive_class, dark);
 
+  // Press-lift animation — port of SentimentX's card hover (translateY(-2px) + shadow, all .18s ease)
+  const scale = useRef(new Animated.Value(1)).current;
+  const onPressIn = () =>
+    Animated.spring(scale, { toValue: 0.97, useNativeDriver: true, speed: 60, bounciness: 0 }).start();
+  const onPressOut = () =>
+    Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 40, bounciness: 5 }).start();
+
   const handlePress = () => {
     if (story.url) Linking.openURL(story.url).catch(() => {});
   };
 
   return (
-    <TouchableOpacity onPress={handlePress} style={s.card} activeOpacity={0.8}>
-      <View style={[s.accentBar, { backgroundColor: accentColor }]} />
-      {story.image_url ? (
-        <Image source={{ uri: story.image_url }} style={s.image} resizeMode="cover" />
-      ) : null}
-      <View style={s.cardBody}>
-        <Text style={s.title} numberOfLines={2}>{story.title}</Text>
-        <View style={s.meta}>
-          {story.publisher ? <Text style={s.publisher}>{story.publisher}</Text> : null}
-          {story.published_at ? (
-            <Text style={s.time}>
-              {new Date(story.published_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-            </Text>
-          ) : null}
+    <Animated.View style={[s.card, { transform: [{ scale }] }]}>
+      <TouchableOpacity
+        onPress={handlePress}
+        onPressIn={onPressIn}
+        onPressOut={onPressOut}
+        activeOpacity={1}
+        style={s.cardInner}
+      >
+        <View style={[s.accentBar, { backgroundColor: accentColor }]} />
+        {story.image_url ? (
+          <Image source={{ uri: story.image_url }} style={s.image} resizeMode="cover" />
+        ) : null}
+        <View style={s.cardBody}>
+          <Text style={s.title} numberOfLines={2}>{story.title}</Text>
+          <View style={s.meta}>
+            {story.publisher ? <Text style={s.publisher}>{story.publisher}</Text> : null}
+            {story.published_at ? (
+              <Text style={s.time}>
+                {new Date(story.published_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+              </Text>
+            ) : null}
+          </View>
         </View>
-      </View>
-    </TouchableOpacity>
+      </TouchableOpacity>
+    </Animated.View>
   );
 }
 
@@ -290,10 +306,19 @@ const makeStyles = (dark: boolean, _isWide: boolean) =>
 const newsStyles = (dark: boolean) =>
   StyleSheet.create({
     card: {
+      borderRadius: 12,
+      marginBottom: 10,
+      // shadow visible during scale-up press animation
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: dark ? 0.35 : 0.12,
+      shadowRadius: 8,
+      elevation: 3,
+    },
+    cardInner: {
       flexDirection: 'row',
       backgroundColor: dark ? '#111827' : '#FFFFFF',
       borderRadius: 12,
-      marginBottom: 10,
       overflow: 'hidden',
     },
     accentBar: {

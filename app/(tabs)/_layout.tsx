@@ -6,6 +6,7 @@ import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import AppHeader from '@/components/AppHeader';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
@@ -14,9 +15,13 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
-        headerShown: false,
+        // Replace the default navigator header with the SentimentX-style AppHeader
+        header: () => <AppHeader />,
         tabBarButton: HapticTab,
-      }}>
+        // Hide the tab bar — navigation is handled by the hamburger drawer
+        tabBarStyle: { display: 'none' },
+      }}
+    >
       <Tabs.Screen
         name="index"
         options={{

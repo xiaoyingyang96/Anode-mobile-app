@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, useColorScheme } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, Animated, StyleSheet, useColorScheme } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Watchlist } from '@/types/watchlist';
@@ -38,6 +38,13 @@ export default function WatchlistDashboard({ watchlists, refetch }: WatchlistDas
   const activeIndex = Math.max(0, watchlists.findIndex((w) => w.id === activeId));
   const activeWatchlist = watchlists[activeIndex];
 
+  // Fade content in whenever the active tab changes
+  const contentAnim = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    contentAnim.setValue(0);
+    Animated.timing(contentAnim, { toValue: 1, duration: 280, useNativeDriver: true }).start();
+  }, [activeId]);
+
   // Modal states
   const [addAssetsOpen, setAddAssetsOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
@@ -70,7 +77,7 @@ export default function WatchlistDashboard({ watchlists, refetch }: WatchlistDas
   };
 
   return (
-    <SafeAreaView style={s.safeArea} edges={['top']}>
+    <SafeAreaView style={s.safeArea} edges={[]}>
       {/* Sticky topbar */}
       <WatchlistTopbar
         watchlists={watchlists}
@@ -90,7 +97,7 @@ export default function WatchlistDashboard({ watchlists, refetch }: WatchlistDas
       />
 
       {/* Content or empty state */}
-      <View style={s.content}>
+      <Animated.View style={[s.content, { opacity: contentAnim }]}>
         {activeWatchlist.assets_count === 0 ? (
           <EmptyAssetList onAddAssetsOpen={() => setAddAssetsOpen(true)} />
         ) : (
@@ -100,7 +107,7 @@ export default function WatchlistDashboard({ watchlists, refetch }: WatchlistDas
             onRefetch={refetch}
           />
         )}
-      </View>
+      </Animated.View>
 
       {/* Modals */}
       <AddAssetsModal
