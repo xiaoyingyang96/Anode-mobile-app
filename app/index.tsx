@@ -1,8 +1,3 @@
-// import { Redirect } from 'expo-router';
-
-// export default function Index() {
-//   return <Redirect href="/login" />;
-// }
 import { useAuth } from '@/context/AuthContext';
 import { Redirect } from 'expo-router';
 import { ActivityIndicator, View } from 'react-native';
@@ -20,5 +15,5 @@ export default function Index() {
   }
 
   // If logged in, go to main app. If not, go to login.
-  return user ? <Redirect href="/(tabs)" /> : <Redirect href="/login" />;
+  return user ? <Redirect href="/(tabs)/explore" /> : <Redirect href="/login" />;
 }

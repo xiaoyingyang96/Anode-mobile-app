@@ -14,31 +14,23 @@
  * dimmed backdrop that fades in/out — mirrors MobileBottomSheet's SwipeableDrawer.
  */
 
+import { WatchlistColors } from '@/constants/theme';
+import { useAuth } from '@/context/AuthContext';
+import { useThemeContext } from '@/context/ThemeContext';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { Ionicons } from '@expo/vector-icons';
+import { usePathname, useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Animated,
   Modal,
-  View,
+  ScrollView,
+  StyleSheet,
   Text,
   TouchableOpacity,
   TouchableWithoutFeedback,
-  ScrollView,
-  StyleSheet,
+  View,
 } from 'react-native';
-import { useRouter, usePathname } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { useAuth } from '@/context/AuthContext';
-import { useThemeContext } from '@/context/ThemeContext';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { WatchlistColors } from '@/constants/theme';
-
-// ─── Nav items ───────────────────────────────────────────────────────────────
-
-const NAV_ITEMS = [
-  { title: 'Home',       route: '/',           icon: 'home-outline',     iconActive: 'home'     },
-  { title: 'Explore',    route: '/explore',    icon: 'compass-outline',  iconActive: 'compass'  },
-  { title: 'Watchlists', route: '/watchlists', icon: 'bookmark-outline', iconActive: 'bookmark' },
-] as const;
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -243,21 +235,6 @@ export default function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {/* ── Main Navigations ── */}
-          <SectionLabel label="Main Navigation" dark={dark} />
-          <View style={styles.navList}>
-            {NAV_ITEMS.map((item) => (
-              <NavItem
-                key={item.route}
-                title={item.title}
-                icon={item.icon}
-                iconActive={item.iconActive}
-                isActive={isActive(item.route)}
-                dark={dark}
-                onPress={() => navigate(item.route)}
-              />
-            ))}
-          </View>
 
           {/* ── Divider ── */}
           <View style={[styles.divider, { backgroundColor: dividerBg }]} />

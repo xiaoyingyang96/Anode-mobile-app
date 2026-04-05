@@ -1,40 +1,25 @@
-/**
- * ExploreScreen — port of SentimentX's MobileView (Explore page).
- *
- * Layout (top → bottom, matches SentimentX mobile layout exactly):
- *   LiveCryptoBoard   — scrolling marquee of 8 top tickers
- *   MarketOverview    — 3 KPI cards (Marketcap, Volume, Dominance)
- *   SectionTabs       — Assets | Top Stories | Daily Recaps | Policy Updates
- *   Section content   — placeholder UI for each tab
- *
- * Animations:
- *   - LiveCryptoBoard: infinite marquee (Animated.loop)
- *   - MarketOverview cards: staggered fade+scale pop-in on mount
- *   - AssetRow: staggered fade+slide-up on mount (index-based delay)
- *   - NewsCard / RecapCard / PolicyCard: spring scale press-lift
- *   - Section content: fade-in on tab switch
- *
- * All data is static placeholder — API wiring is left for a future pass.
- */
-
+import { WatchlistColors } from '@/constants/theme';
+import { useAuth } from '@/context/AuthContext';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useWatchlists } from '@/hooks/useWatchlists';
+import { Watchlist } from '@/types/watchlist';
+import { watchlistApi } from '@/utils/watchlistApi';
+import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  View,
-  Text,
+  ActivityIndicator,
   Animated,
   Easing,
-  ScrollView,
-  TouchableOpacity,
   Image,
+  Linking,
+  Modal,
+  ScrollView,
   StyleSheet,
-  useColorScheme,
-  useWindowDimensions,
+  Text,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { WatchlistColors } from '@/constants/theme';
-
-// ─── Shared helpers ───────────────────────────────────────────────────────────
-
 const UP   = WatchlistColors.tickerUp;
 const DOWN = WatchlistColors.tickerDown;
 
@@ -42,10 +27,7 @@ function deltaColor(up: boolean, dark: boolean) {
   return up ? UP[dark ? 'dark' : 'light'] : DOWN[dark ? 'dark' : 'light'];
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// 1. LIVE CRYPTO BOARD
-// Port of LiveCryptoBoard.tsx — CSS @keyframes marquee → Animated.loop
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── LIVE CRYPTO BOARD ───────────────────────────────────────────────────────
 
 const TICKERS = [
   { id: 'BTC',  price: '$68,420', change: '+2.3%',  up: true  },
@@ -58,16 +40,15 @@ const TICKERS = [
   { id: 'LINK', price: '$18.45',  change: '-1.2%',  up: false },
 ];
 
-const CARD_W   = 158;
-const CARD_MR  = 8;
-const PER_CARD = CARD_W + CARD_MR;
-const HALF_W   = TICKERS.length * PER_CARD;
+const CARD_W  = 158;
+const CARD_MR = 8;
+const HALF_W  = TICKERS.length * (CARD_W + CARD_MR);
 
 function TickerCard({ item, dark }: { item: typeof TICKERS[0]; dark: boolean }) {
   const logoUri = `https://assets.coincap.io/assets/icons/${item.id.toLowerCase()}@2x.png`;
   const col = deltaColor(item.up, dark);
   const cardBg = dark ? '#111827' : '#FFFFFF';
-  const border  = dark ? '#1F2937' : '#E5E7EB';
+  const border = dark ? '#1F2937' : '#E5E7EB';
   return (
     <View style={[tcStyles.card, { backgroundColor: cardBg, borderColor: border, width: CARD_W, marginRight: CARD_MR }]}>
       <Image source={{ uri: logoUri }} style={tcStyles.logo} />
@@ -81,15 +62,7 @@ function TickerCard({ item, dark }: { item: typeof TICKERS[0]; dark: boolean }) 
 }
 
 const tcStyles = StyleSheet.create({
-  card: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderRadius: 8,
-    borderWidth: 1,
-  },
+  card:     { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 8, borderRadius: 8, borderWidth: 1 },
   logo:     { width: 20, height: 20, borderRadius: 10 },
   symbol:   { fontSize: 11, fontWeight: '700', width: 32 },
   priceRow: { flex: 1, alignItems: 'flex-end' },
@@ -97,30 +70,22 @@ const tcStyles = StyleSheet.create({
   change:   { fontSize: 11, fontWeight: '500', marginTop: 1 },
 });
 
-function LiveCryptoBoard({ dark }: { dark: boolean }) {
+export function LiveCryptoBoard({ dark }: { dark: boolean }) {
   const marquee = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     const anim = Animated.loop(
-      Animated.timing(marquee, {
-        toValue: -HALF_W,
-        duration: 60_000,
-        easing: Easing.linear,
-        useNativeDriver: true,
-      }),
+      Animated.timing(marquee, { toValue: -HALF_W, duration: 60_000, easing: Easing.linear, useNativeDriver: true }),
     );
     anim.start();
     return () => anim.stop();
   }, []);
 
   const doubled = [...TICKERS, ...TICKERS];
-
   return (
     <View style={lcbStyles.wrapper}>
       <Animated.View style={[lcbStyles.track, { transform: [{ translateX: marquee }] }]}>
-        {doubled.map((item, i) => (
-          <TickerCard key={`${item.id}-${i}`} item={item} dark={dark} />
-        ))}
+        {doubled.map((item, i) => <TickerCard key={`${item.id}-${i}`} item={item} dark={dark} />)}
       </Animated.View>
     </View>
   );
@@ -131,10 +96,7 @@ const lcbStyles = StyleSheet.create({
   track:   { flexDirection: 'row' },
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// 2. MARKET OVERVIEW
-// Port of MobileMarketOverview.tsx — 3 KPI stat cards with staggered pop-in
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── MARKET OVERVIEW ─────────────────────────────────────────────────────────
 
 function DeltaBadge({ change, up, dark }: { change: string; up: boolean; dark: boolean }) {
   const col = deltaColor(up, dark);
@@ -164,18 +126,12 @@ function StatCard({ label, value, change, up, dark, children, index = 0 }: {
   const bg     = dark ? '#0D1117' : '#F9FAFB';
   const border = dark ? '#1F2937' : '#E5E7EB';
   return (
-    <Animated.View style={[
-      moStyles.card,
-      { backgroundColor: bg, borderColor: border },
-      { opacity: fadeAnim, transform: [{ scale: scaleAnim }] },
-    ]}>
+    <Animated.View style={[moStyles.card, { backgroundColor: bg, borderColor: border }, { opacity: fadeAnim, transform: [{ scale: scaleAnim }] }]}>
       <Text style={[moStyles.label, { color: dark ? '#AEB0B4' : '#4B5563' }]}>{label}</Text>
       {value ? (
         <View style={moStyles.row}>
           <Text style={[moStyles.value, { color: dark ? '#EEEEEF' : '#111827' }]}>{value}</Text>
-          {change !== undefined && up !== undefined && (
-            <DeltaBadge change={change} up={up} dark={dark} />
-          )}
+          {change !== undefined && up !== undefined && <DeltaBadge change={change} up={up} dark={dark} />}
         </View>
       ) : null}
       {children}
@@ -190,7 +146,7 @@ const PLACEHOLDER_MARKET = {
   ethDom: { value: '17.1%', change: '-0.2%', up: false },
 };
 
-function MarketOverview({ dark }: { dark: boolean }) {
+export function MarketOverview({ dark }: { dark: boolean }) {
   const m = PLACEHOLDER_MARKET;
   return (
     <View style={moStyles.row3}>
@@ -221,76 +177,134 @@ const moStyles = StyleSheet.create({
   row:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   value: { fontSize: 14, fontWeight: '700' },
 });
+// ─── ADD TO WATCHLIST MODAL ──────────────────────────────────────────────────
 
-// ─────────────────────────────────────────────────────────────────────────────
-// 3. SECTION TABS
-// Port of MobileSectionTabs.tsx — horizontal scrollable tab bar with indicator
-// ─────────────────────────────────────────────────────────────────────────────
+function AddToWatchlistModal({ visible, onClose, dark, ticker, name }: {
+  visible: boolean;
+  onClose: () => void;
+  dark: boolean;
+  ticker: string;
+  name: string;
+}) {
+  const { user } = useAuth();
+  const { watchlists } = useWatchlists();
+  const [adding, setAdding] = useState<number | null>(null);
+  const [added, setAdded] = useState<Set<number>>(new Set());
 
-type SectionId = 'assets' | 'top_stories' | 'daily_recaps' | 'policy_updates';
+  const sheetBg  = dark ? '#0D1117' : '#FFFFFF';
+  const textMain = dark ? '#EEEEEF' : '#111827';
+  const textSub  = dark ? '#AEB0B4' : '#4B5563';
+  const border   = dark ? '#1F2937' : '#E5E7EB';
 
-const SECTIONS: { id: SectionId; label: string; icon: string }[] = [
-  { id: 'assets',          label: 'Assets',         icon: 'bar-chart-outline'    },
-  { id: 'top_stories',     label: 'Top Stories',    icon: 'newspaper-outline'    },
-  { id: 'daily_recaps',    label: 'Daily Recaps',   icon: 'calendar-outline'     },
-  { id: 'policy_updates',  label: 'Policy Updates', icon: 'document-text-outline'},
-];
+  const handleAdd = async (watchlist: Watchlist) => {
+    if (added.has(watchlist.id)) return;
+    setAdding(watchlist.id);
+    const result = await watchlistApi.addAssetsBatch(watchlist.id, [{ ticker, name }]);
+    setAdding(null);
+    if (result.ok) {
+      setAdded(prev => new Set(prev).add(watchlist.id));
+    }
+  };
 
-function SectionTabs({
-  active, onSelect, dark,
-}: { active: SectionId; onSelect: (id: SectionId) => void; dark: boolean }) {
-  const border = dark ? '#1F2937' : '#E5E7EB';
+  const handleClose = () => {
+    setAdded(new Set());
+    onClose();
+  };
+
   return (
-    <View style={[stStyles.wrapper, { borderBottomColor: border }]}>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={stStyles.track}>
-        {SECTIONS.map((s) => {
-          const isActive = s.id === active;
-          return (
-            <TouchableOpacity
-              key={s.id}
-              onPress={() => onSelect(s.id)}
-              style={[stStyles.tab, isActive && { borderBottomColor: WatchlistColors.primary, borderBottomWidth: 2 }]}
-              activeOpacity={0.7}
-            >
-              <Ionicons
-                name={s.icon as any}
-                size={14}
-                color={isActive ? WatchlistColors.primary : (dark ? '#AEB0B4' : '#4B5563')}
-              />
-              <Text style={[
-                stStyles.label,
-                { color: isActive ? WatchlistColors.primary : (dark ? '#AEB0B4' : '#4B5563') },
-                isActive && { fontWeight: '700' },
-              ]}>
-                {s.label}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
-    </View>
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={handleClose}>
+      <TouchableWithoutFeedback onPress={handleClose}>
+        <View style={{ ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)' }} />
+      </TouchableWithoutFeedback>
+
+      <View style={[wlStyles.sheet, { backgroundColor: sheetBg }]}>
+        {/* Handle */}
+        <View style={wlStyles.handleRow}>
+          <View style={[wlStyles.handle, { backgroundColor: dark ? '#374151' : '#D1D5DB' }]} />
+        </View>
+
+        {/* Title */}
+        <View style={[wlStyles.header, { borderBottomColor: border }]}>
+          <View>
+            <Text style={[wlStyles.title, { color: textMain }]}>Add to Watchlist</Text>
+            <Text style={[wlStyles.subtitle, { color: textSub }]}>{name} ({ticker.toUpperCase()})</Text>
+          </View>
+          <TouchableOpacity onPress={handleClose}>
+            <Ionicons name="close" size={20} color={textSub} />
+          </TouchableOpacity>
+        </View>
+
+        {/* Not logged in */}
+        {!user ? (
+          <View style={wlStyles.emptyState}>
+            <Ionicons name="lock-closed-outline" size={36} color={textSub} />
+            <Text style={[wlStyles.emptyText, { color: textSub }]}>Sign in to use watchlists</Text>
+          </View>
+        ) : !watchlists || watchlists.length === 0 ? (
+          <View style={wlStyles.emptyState}>
+            <Ionicons name="bookmark-outline" size={36} color={textSub} />
+            <Text style={[wlStyles.emptyText, { color: textSub }]}>No watchlists yet</Text>
+          </View>
+        ) : (
+          <ScrollView style={{ maxHeight: 320 }}>
+            {watchlists.map((wl) => {
+              const isAlready = wl.asset_tickers.some(
+                (t) => t.ticker.toLowerCase() === ticker.toLowerCase()
+              );
+              const isAdded = added.has(wl.id);
+              const isAdding = adding === wl.id;
+
+              return (
+                <TouchableOpacity
+                  key={wl.id}
+                  onPress={() => !isAlready && !isAdded && handleAdd(wl)}
+                  disabled={isAlready || isAdded || isAdding}
+                  style={[wlStyles.row, { borderBottomColor: border }]}
+                  activeOpacity={0.7}
+                >
+                  <View style={[wlStyles.iconWrap, { backgroundColor: `${WatchlistColors.primary}20` }]}>
+                    <Ionicons name="bookmark" size={16} color={WatchlistColors.primary} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[wlStyles.wlName, { color: textMain }]}>{wl.name}</Text>
+                    <Text style={[wlStyles.wlCount, { color: textSub }]}>{wl.assets_count} assets</Text>
+                  </View>
+                  {isAdding ? (
+                    <ActivityIndicator size="small" color={WatchlistColors.primary} />
+                  ) : isAlready || isAdded ? (
+                    <View style={wlStyles.addedBadge}>
+                      <Text style={wlStyles.addedText}>{isAlready ? 'Already added' : 'Added ✓'}</Text>
+                    </View>
+                  ) : (
+                    <Ionicons name="add-circle-outline" size={22} color={WatchlistColors.primary} />
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        )}
+      </View>
+    </Modal>
   );
 }
 
-const stStyles = StyleSheet.create({
-  wrapper: { borderBottomWidth: StyleSheet.hairlineWidth },
-  track:   { paddingHorizontal: 4, gap: 4 },
-  tab: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 10,
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
-  },
-  label: { fontSize: 13 },
+const wlStyles = StyleSheet.create({
+  sheet:      { position: 'absolute', bottom: 0, left: 0, right: 0, borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingBottom: 40, shadowColor: '#000', shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.2, shadowRadius: 12, elevation: 24 },
+  handleRow:  { paddingTop: 10, paddingBottom: 4, alignItems: 'center' },
+  handle:     { width: 40, height: 4, borderRadius: 999 },
+  header:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: StyleSheet.hairlineWidth },
+  title:      { fontSize: 16, fontWeight: '700' },
+  subtitle:   { fontSize: 12, marginTop: 2 },
+  emptyState: { alignItems: 'center', justifyContent: 'center', paddingVertical: 40, gap: 12 },
+  emptyText:  { fontSize: 14 },
+  row:        { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: StyleSheet.hairlineWidth, gap: 12 },
+  iconWrap:   { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  wlName:     { fontSize: 14, fontWeight: '600' },
+  wlCount:    { fontSize: 12, marginTop: 2 },
+  addedBadge: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3, backgroundColor: `${WatchlistColors.primary}20` },
+  addedText:  { fontSize: 11, fontWeight: '600', color: WatchlistColors.primary },
 });
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 4. ASSETS SECTION
-// Port of MobileAssetsSection — staggered fade+slide row pop-in on mount
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── ASSETS SECTION ──────────────────────────────────────────────────────────
 
 const PLACEHOLDER_ASSETS = [
   { id: 'BTC',   name: 'Bitcoin',   price: '$68,420', change: '+2.30%', up: true  },
@@ -305,7 +319,12 @@ const PLACEHOLDER_ASSETS = [
   { id: 'MATIC', name: 'Polygon',   price: '$0.710',  change: '+2.10%', up: true  },
 ];
 
-function AssetRow({ item, index, dark }: { item: typeof PLACEHOLDER_ASSETS[0]; index: number; dark: boolean }) {
+function AssetRow({ item, index, dark, onAddToWatchlist }: {
+  item: typeof PLACEHOLDER_ASSETS[0];
+  index: number;
+  dark: boolean;
+  onAddToWatchlist: (ticker: string, name: string) => void;
+}) {
   const fadeAnim  = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(14)).current;
 
@@ -323,11 +342,7 @@ function AssetRow({ item, index, dark }: { item: typeof PLACEHOLDER_ASSETS[0]; i
   const uri     = `https://assets.coincap.io/assets/icons/${item.id.toLowerCase()}@2x.png`;
 
   return (
-    <Animated.View style={[
-      asStyles.row,
-      { backgroundColor: surface, borderBottomColor: border },
-      { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
-    ]}>
+    <Animated.View style={[asStyles.row, { backgroundColor: surface, borderBottomColor: border }, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
       <Text style={[asStyles.num, { color: dark ? '#AEB0B4' : '#4B5563' }]}>{index + 1}</Text>
       <Image source={{ uri }} style={asStyles.logo} />
       <View style={asStyles.nameCol}>
@@ -338,6 +353,13 @@ function AssetRow({ item, index, dark }: { item: typeof PLACEHOLDER_ASSETS[0]; i
         <Text style={[asStyles.price, { color: dark ? '#EEEEEF' : '#111827' }]}>{item.price}</Text>
         <Text style={[asStyles.change, { color: col }]}>{item.change}</Text>
       </View>
+      <TouchableOpacity
+        onPress={() => onAddToWatchlist(item.id, item.name)}
+        style={asStyles.addBtn}
+        activeOpacity={0.7}
+      >
+        <Ionicons name="add-circle-outline" size={22} color={WatchlistColors.primary} />
+      </TouchableOpacity>
     </Animated.View>
   );
 }
@@ -352,47 +374,268 @@ const asStyles = StyleSheet.create({
   priceCol: { alignItems: 'flex-end' },
   price:    { fontSize: 14, fontWeight: '600' },
   change:   { fontSize: 12, fontWeight: '600', marginTop: 2 },
+  addBtn: { paddingLeft: 8, paddingVertical: 4 }
 });
 
-function AssetsSection({ dark }: { dark: boolean }) {
+export function AssetsSection({ dark }: { dark: boolean }) {
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedTicker, setSelectedTicker] = useState('');
+  const [selectedName, setSelectedName] = useState('');
+
   const hdr     = dark ? '#0D1117' : '#F3F4F6';
   const hdrText = dark ? '#AEB0B4' : '#4B5563';
+
   return (
-    <ScrollView>
-      <View style={[asStyles.row, { backgroundColor: hdr, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: dark ? '#1F2937' : '#E5E7EB' }]}>
-        <Text style={{ width: 22, fontSize: 11, fontWeight: '700', color: hdrText, textTransform: 'uppercase', letterSpacing: 0.4 }}>#</Text>
-        <View style={{ width: 32 + 16 }} />
-        <Text style={{ flex: 1, fontSize: 11, fontWeight: '700', color: hdrText, textTransform: 'uppercase', letterSpacing: 0.4 }}>Asset</Text>
-        <Text style={{ fontSize: 11, fontWeight: '700', color: hdrText, textTransform: 'uppercase', letterSpacing: 0.4 }}>Price / 24h</Text>
-      </View>
-      {PLACEHOLDER_ASSETS.map((a, i) => (
-        <AssetRow key={a.id} item={a} index={i} dark={dark} />
-      ))}
-    </ScrollView>
+    <>
+      <ScrollView>
+        <View style={[asStyles.row, { backgroundColor: hdr, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: dark ? '#1F2937' : '#E5E7EB' }]}>
+          <Text style={{ width: 22, fontSize: 11, fontWeight: '700', color: hdrText, textTransform: 'uppercase', letterSpacing: 0.4 }}>#</Text>
+          <View style={{ width: 32 + 16 }} />
+          <Text style={{ flex: 1, fontSize: 11, fontWeight: '700', color: hdrText, textTransform: 'uppercase', letterSpacing: 0.4 }}>Asset</Text>
+          <Text style={{ fontSize: 11, fontWeight: '700', color: hdrText, textTransform: 'uppercase', letterSpacing: 0.4 }}>Price / 24h</Text>
+          <View style={{ width: 30 }} />
+        </View>
+        {PLACEHOLDER_ASSETS.map((a, i) => (
+          <AssetRow
+            key={a.id}
+            item={a}
+            index={i}
+            dark={dark}
+            onAddToWatchlist={(ticker, name) => {
+              setSelectedTicker(ticker);
+              setSelectedName(name);
+              setModalVisible(true);
+            }}
+          />
+        ))}
+      </ScrollView>
+      <AddToWatchlistModal
+        visible={modalVisible}
+        onClose={() => setModalVisible(false)}
+        dark={dark}
+        ticker={selectedTicker}
+        name={selectedName}
+      />
+    </>
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// 5. TOP STORIES SECTION
-// Port of MobileTopStoriesSection — news cards with sentiment accent + press-lift
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── NEWS DETAIL MODAL ───────────────────────────────────────────────────────
 
-const PLACEHOLDER_STORIES = [
-  { id: 1, title: 'Bitcoin Surpasses $68K as Institutional Demand Accelerates', publisher: 'CoinDesk', time: '2h ago', sentiment: 1 as -1|0|1, image: true  },
-  { id: 2, title: 'Ethereum Layer 2 Ecosystem Sees Record $45B in TVL',          publisher: 'The Block', time: '4h ago', sentiment: 1 as -1|0|1, image: false },
-  { id: 3, title: 'SEC Reviews New Crypto Custody Rules for Institutional Investors', publisher: 'Reuters', time: '6h ago', sentiment: 0 as -1|0|1, image: true  },
-  { id: 4, title: 'Solana Network Experiences Brief Congestion During NFT Mint',  publisher: 'Decrypt', time: '8h ago', sentiment: -1 as -1|0|1, image: false },
-  { id: 5, title: 'BlackRock Bitcoin ETF Surpasses $20B in Assets Under Management', publisher: 'Bloomberg', time: '10h ago', sentiment: 1 as -1|0|1, image: true  },
-  { id: 6, title: 'Ripple vs SEC: Court Orders Document Disclosure in Ongoing Case', publisher: 'CoinTelegraph', time: '12h ago', sentiment: 0 as -1|0|1, image: false },
-];
 
-function sentimentAccent(s: -1|0|1, dark: boolean) {
-  if (s === 1)  return UP[dark ? 'dark' : 'light'];
-  if (s === -1) return DOWN[dark ? 'dark' : 'light'];
-  return '#B45309';
+function NewsDetailModal({ item, visible, onClose, dark }: {
+  item: NewsItem | null;
+  visible: boolean;
+  onClose: () => void;
+  dark: boolean;
+}) {
+  const slideAnim = useRef(new Animated.Value(800)).current;
+
+  useEffect(() => {
+    if (visible) {
+      Animated.spring(slideAnim, { toValue: 0, useNativeDriver: true, bounciness: 0, speed: 18 }).start();
+    } else {
+      Animated.timing(slideAnim, { toValue: 800, duration: 260, useNativeDriver: true }).start();
+    }
+  }, [visible]);
+
+  if (!item) return null;
+
+  const accent = item.naive_class === 1
+    ? UP[dark ? 'dark' : 'light']
+    : item.naive_class === -1
+    ? DOWN[dark ? 'dark' : 'light']
+    : '#B45309';
+
+  const sheetBg  = dark ? '#0D1117' : '#FFFFFF';
+  const surface  = dark ? '#111827' : '#F9FAFB';
+  const border   = dark ? '#1F2937' : '#E5E7EB';
+  const textMain = dark ? '#EEEEEF' : '#111827';
+  const textSub  = dark ? '#AEB0B4' : '#4B5563';
+
+  return (
+    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose} statusBarTranslucent>
+      {/* Backdrop */}
+      <TouchableWithoutFeedback onPress={onClose}>
+        <View style={{ ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.6)' }} />
+      </TouchableWithoutFeedback>
+
+      {/* Sheet */}
+      <Animated.View style={[
+        ndStyles.sheet,
+        { backgroundColor: sheetBg, transform: [{ translateY: slideAnim }] }
+      ]}>
+        {/* Handle */}
+        <View style={ndStyles.handleRow}>
+          <View style={[ndStyles.handle, { backgroundColor: dark ? '#374151' : '#D1D5DB' }]} />
+        </View>
+
+        {/* Close button */}
+        <TouchableOpacity onPress={onClose} style={ndStyles.closeBtn} activeOpacity={0.7}>
+          <Ionicons name="close" size={20} color={textSub} />
+        </TouchableOpacity>
+
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={ndStyles.scroll}>
+
+          {/* Publisher + sentiment dot */}
+          <View style={ndStyles.publisherRow}>
+            <View style={[ndStyles.dot, { backgroundColor: accent }]} />
+            <Text style={[ndStyles.publisher, { color: textSub }]}>{item.publisher}</Text>
+          </View>
+
+          {/* Title */}
+          <Text style={[ndStyles.title, { color: textMain }]}>{item.title}</Text>
+
+          {/* Published time */}
+          <Text style={[ndStyles.time, { color: textSub }]}>
+            Published: {new Date(item.published_at.replace(' +0000 UTC', 'Z').replace(' ', 'T')).toLocaleString('en-US', {
+              month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit'
+            })}
+          </Text>
+
+          {/* Image */}
+          {item.image_url ? (
+            <Image source={{ uri: item.image_url }} style={ndStyles.image} resizeMode="cover" />
+          ) : null}
+
+          {/* Key Takeaways */}
+          {item.takeaways?.length > 0 && (
+            <View style={[ndStyles.section, { backgroundColor: surface, borderColor: border }]}>
+              <View style={ndStyles.sectionHeader}>
+                <View style={[ndStyles.accentBar, { backgroundColor: WatchlistColors.primary }]} />
+                <Text style={[ndStyles.sectionTitle, { color: textMain }]}>Key Takeaways</Text>
+              </View>
+              {item.takeaways.map((t, i) => (
+                <View key={i} style={ndStyles.takeawayRow}>
+                  <View style={[ndStyles.takeawayNum, { backgroundColor: WatchlistColors.primary }]}>
+                    <Text style={ndStyles.takeawayNumText}>{i + 1}</Text>
+                  </View>
+                  <Text style={[ndStyles.takeawayText, { color: textMain }]}>{t}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {/* Summary */}
+          {item.summary && (
+            <View style={[ndStyles.section, { backgroundColor: surface, borderColor: border }]}>
+              <View style={ndStyles.sectionHeader}>
+                <View style={[ndStyles.accentBar, { backgroundColor: WatchlistColors.primary }]} />
+                <Text style={[ndStyles.sectionTitle, { color: textMain }]}>Summary</Text>
+              </View>
+              <Text style={[ndStyles.summaryText, { color: textSub }]}>{item.summary}</Text>
+            </View>
+          )}
+
+          {/* Related Tags */}
+          {item.tags?.length > 0 && (
+            <View style={ndStyles.tagsSection}>
+              <Text style={[ndStyles.sectionTitle, { color: textMain, marginBottom: 8 }]}>Related Tags</Text>
+              <View style={ndStyles.tagsRow}>
+                {item.tags.map((tag, i) => (
+                  <View key={i} style={[ndStyles.tag, { borderColor: WatchlistColors.primary, backgroundColor: `${WatchlistColors.primary}15` }]}>
+                    <Text style={[ndStyles.tagText, { color: WatchlistColors.primary }]}>{tag}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
+
+          {/* Reference Sources */}
+          {item.sources?.length > 0 && (
+            <View style={[ndStyles.section, { backgroundColor: surface, borderColor: border }]}>
+              <View style={ndStyles.sectionHeader}>
+                <View style={[ndStyles.accentBar, { backgroundColor: WatchlistColors.primary }]} />
+                <Text style={[ndStyles.sectionTitle, { color: textMain }]}>Reference Sources</Text>
+              </View>
+              {item.sources.map((src, i) => {
+                const domain = src.replace(/https?:\/\//, '').split('/')[0];
+                return (
+                  <TouchableOpacity key={i} onPress={() => Linking.openURL(src)} style={ndStyles.sourceRow} activeOpacity={0.7}>
+                    <Ionicons name="open-outline" size={14} color={WatchlistColors.primary} />
+                    <Text style={[ndStyles.sourceText, { color: WatchlistColors.primary }]} numberOfLines={1}>
+                      {domain}: {src}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          )}
+
+          {/* Read Full Article */}
+          <TouchableOpacity
+            onPress={() => Linking.openURL(item.url)}
+            style={[ndStyles.readBtn, { borderColor: WatchlistColors.primary }]}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="open-outline" size={16} color={WatchlistColors.primary} />
+            <Text style={[ndStyles.readBtnText, { color: WatchlistColors.primary }]}>Read Full Article</Text>
+          </TouchableOpacity>
+
+        </ScrollView>
+      </Animated.View>
+    </Modal>
+  );
 }
 
-function NewsCard({ item, dark, index = 0 }: { item: typeof PLACEHOLDER_STORIES[0]; dark: boolean; index?: number }) {
+const ndStyles = StyleSheet.create({
+  sheet:         { position: 'absolute', bottom: 0, left: 0, right: 0, maxHeight: '92%', borderTopLeftRadius: 20, borderTopRightRadius: 20, shadowColor: '#000', shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.2, shadowRadius: 12, elevation: 24 },
+  handleRow:     { paddingTop: 10, paddingBottom: 4, alignItems: 'center' },
+  handle:        { width: 40, height: 4, borderRadius: 999 },
+  closeBtn:      { position: 'absolute', top: 12, right: 16, width: 32, height: 32, alignItems: 'center', justifyContent: 'center', zIndex: 10 },
+  scroll:        { paddingHorizontal: 16, paddingBottom: 40, paddingTop: 8 },
+  publisherRow:  { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
+  dot:           { width: 8, height: 8, borderRadius: 4 },
+  publisher:     { fontSize: 12, fontWeight: '600' },
+  title:         { fontSize: 20, fontWeight: '700', lineHeight: 28, marginBottom: 6 },
+  time:          { fontSize: 12, marginBottom: 14 },
+  image:         { width: '100%', height: 200, borderRadius: 12, marginBottom: 16 },
+  section:       { borderRadius: 12, borderWidth: 1, padding: 14, marginBottom: 14 },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
+  accentBar:     { width: 3, height: 16, borderRadius: 2 },
+  sectionTitle:  { fontSize: 15, fontWeight: '700' },
+  takeawayRow:   { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 10 },
+  takeawayNum:   { width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
+  takeawayNumText: { fontSize: 11, fontWeight: '700', color: '#fff' },
+  takeawayText:  { flex: 1, fontSize: 13, lineHeight: 19 },
+  summaryText:   { fontSize: 13, lineHeight: 20 },
+  tagsSection:   { marginBottom: 14 },
+  tagsRow:       { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  tag:           { borderWidth: 1, borderRadius: 6, paddingHorizontal: 10, paddingVertical: 4 },
+  tagText:       { fontSize: 12, fontWeight: '600' },
+  sourceRow:     { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginBottom: 8 },
+  sourceText:    { fontSize: 12, flex: 1 },
+  readBtn:       { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderWidth: 1.5, borderRadius: 12, paddingVertical: 14, marginTop: 4 },
+  readBtnText:   { fontSize: 15, fontWeight: '700' },
+});
+
+// ─── TOP STORIES SECTION ─────────────────────────────────────────────────────
+interface NewsItem {
+  id: number;
+  title: string;
+  url: string;
+  image_url: string;
+  publisher: string;
+  published_at: string;
+  summary: string;
+  naive_class: -1 | 0 | 1;
+  takeaways: string[];
+  tags: string[];
+  sources: string[];
+}
+
+function timeAgo(dateStr: string): string {
+  const cleaned = dateStr.replace(' +0000 UTC', 'Z').replace(' ', 'T');
+  const diff = Date.now() - new Date(cleaned).getTime();
+  const hours = Math.floor(diff / 3600000);
+  if (hours < 1) return 'Just now';
+  if (hours < 24) return `${hours}h ago`;
+  return `${Math.floor(hours / 24)}d ago`;
+}
+
+function NewsCard({ item, dark, index = 0, onPress }: {
+  item: NewsItem; dark: boolean; index?: number; onPress: () => void;
+}) {
   const scale     = useRef(new Animated.Value(1)).current;
   const fadeAnim  = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(16)).current;
@@ -409,27 +652,30 @@ function NewsCard({ item, dark, index = 0 }: { item: typeof PLACEHOLDER_STORIES[
   const onPressOut = () => Animated.spring(scale, { toValue: 1,    useNativeDriver: true, speed: 40, bounciness: 5 }).start();
 
   const surface = dark ? '#111827' : '#FFFFFF';
-  const accent  = sentimentAccent(item.sentiment, dark);
+  const accent  = item.naive_class === 1
+    ? UP[dark ? 'dark' : 'light']
+    : item.naive_class === -1
+    ? DOWN[dark ? 'dark' : 'light']
+    : '#B45309';
 
   return (
     <Animated.View style={{ opacity: fadeAnim, transform: [{ scale }, { translateY: slideAnim }] }}>
       <TouchableOpacity
+        onPress={onPress}
         onPressIn={onPressIn}
         onPressOut={onPressOut}
         activeOpacity={1}
         style={[ncStyles.card, { backgroundColor: surface }]}
       >
         <View style={[ncStyles.accentTop, { backgroundColor: accent }]} />
-        {item.image && (
-          <View style={[ncStyles.imagePlaceholder, { backgroundColor: dark ? '#1F2937' : '#E5E7EB' }]}>
-            <Ionicons name="image-outline" size={28} color={dark ? '#374151' : '#D1D5DB'} />
-          </View>
-        )}
+        {item.image_url ? (
+          <Image source={{ uri: item.image_url }} style={ncStyles.image} resizeMode="cover" />
+        ) : null}
         <View style={ncStyles.body}>
           <Text style={[ncStyles.title, { color: dark ? '#EEEEEF' : '#111827' }]} numberOfLines={2}>{item.title}</Text>
           <View style={ncStyles.meta}>
             <Text style={[ncStyles.publisher, { color: dark ? '#AEB0B4' : '#4B5563' }]}>{item.publisher}</Text>
-            <Text style={[ncStyles.time,      { color: dark ? '#AEB0B4' : '#4B5563' }]}>{item.time}</Text>
+            <Text style={[ncStyles.time,      { color: dark ? '#AEB0B4' : '#4B5563' }]}>{timeAgo(item.published_at)}</Text>
           </View>
         </View>
       </TouchableOpacity>
@@ -438,28 +684,65 @@ function NewsCard({ item, dark, index = 0 }: { item: typeof PLACEHOLDER_STORIES[
 }
 
 const ncStyles = StyleSheet.create({
-  card:             { borderRadius: 12, marginBottom: 10, overflow: 'hidden' },
-  accentTop:        { height: 4 },
-  imagePlaceholder: { height: 130, alignItems: 'center', justifyContent: 'center' },
-  body:             { padding: 12 },
-  title:            { fontSize: 14, fontWeight: '600', lineHeight: 20, marginBottom: 8 },
-  meta:             { flexDirection: 'row', justifyContent: 'space-between' },
-  publisher:        { fontSize: 11 },
-  time:             { fontSize: 11 },
+  card:      { borderRadius: 12, marginBottom: 10, overflow: 'hidden' },
+  accentTop: { height: 4 },
+  image:     { height: 160, width: '100%' },
+  body:      { padding: 12 },
+  title:     { fontSize: 14, fontWeight: '600', lineHeight: 20, marginBottom: 8 },
+  meta:      { flexDirection: 'row', justifyContent: 'space-between' },
+  publisher: { fontSize: 11 },
+  time:      { fontSize: 11 },
 });
 
-function TopStoriesSection({ dark }: { dark: boolean }) {
+export function TopStoriesSection({ dark }: { dark: boolean }) {
+  const [stories, setStories] = useState<NewsItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [selectedStory, setSelectedStory] = useState<NewsItem | null>(null);
+  const [modalVisible, setModalVisible] = useState(false);
+
+  useEffect(() => {
+    fetch('https://pinkpenguin.anode.news/api/news/stories?locale=en-US&page=1')
+      .then(res => res.json())
+      .then(data => setStories(data))
+      .catch(err => console.error(err))
+      .finally(() => setIsLoading(false));
+  }, []);
+
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator size="large" color={WatchlistColors.primary} />
+      </View>
+    );
+  }
+
   return (
-    <ScrollView contentContainerStyle={{ padding: 12 }}>
-      {PLACEHOLDER_STORIES.map((s, i) => <NewsCard key={s.id} item={s} index={i} dark={dark} />)}
-    </ScrollView>
+    <>
+      <ScrollView contentContainerStyle={{ padding: 12 }}>
+        {stories.map((s, i) => (
+          <NewsCard
+            key={s.id}
+            item={s}
+            index={i}
+            dark={dark}
+            onPress={() => {
+              setSelectedStory(s);
+              setModalVisible(true);
+            }}
+          />
+        ))}
+      </ScrollView>
+      <NewsDetailModal
+        item={selectedStory}
+        visible={modalVisible}
+        onClose={() => setModalVisible(false)}
+        dark={dark}
+      />
+    </>
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// 6. DAILY RECAPS SECTION
-// Port of MobileDailyRecapsSection — summary cards with press-lift
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── DAILY RECAPS SECTION ────────────────────────────────────────────────────
 
 const PLACEHOLDER_RECAPS = [
   {
@@ -469,7 +752,7 @@ const PLACEHOLDER_RECAPS = [
   },
   {
     id: 2, date: 'Yesterday — Mar 31, 2026',
-    summary: 'Markets consolidated after last week\'s rally. Solana saw brief network congestion during a major NFT launch.',
+    summary: "Markets consolidated after last week's rally. Solana saw brief network congestion during a major NFT launch.",
     bullets: ['SOL congestion during Tensor launch', 'DeFi TVL steady at $180B', 'SEC reviewed new custody rules'],
   },
   {
@@ -500,19 +783,12 @@ function RecapCard({ item, dark, index = 0 }: { item: typeof PLACEHOLDER_RECAPS[
 
   return (
     <Animated.View style={{ opacity: fadeAnim, transform: [{ scale }, { translateY: slideAnim }], marginBottom: 10 }}>
-      <TouchableOpacity
-        onPressIn={onPressIn}
-        onPressOut={onPressOut}
-        activeOpacity={1}
-        style={[rcStyles.card, { backgroundColor: surface, borderColor: border }]}
-      >
+      <TouchableOpacity onPressIn={onPressIn} onPressOut={onPressOut} activeOpacity={1} style={[rcStyles.card, { backgroundColor: surface, borderColor: border }]}>
         <View style={rcStyles.header}>
           <Ionicons name="calendar-outline" size={14} color={WatchlistColors.primary} />
           <Text style={[rcStyles.date, { color: WatchlistColors.primary }]}>{item.date}</Text>
         </View>
-        <Text style={[rcStyles.summary, { color: dark ? '#AEB0B4' : '#4B5563' }]} numberOfLines={2}>
-          {item.summary}
-        </Text>
+        <Text style={[rcStyles.summary, { color: dark ? '#AEB0B4' : '#4B5563' }]} numberOfLines={2}>{item.summary}</Text>
         <View style={rcStyles.bullets}>
           {item.bullets.map((b, i) => (
             <View key={i} style={rcStyles.bulletRow}>
@@ -537,7 +813,7 @@ const rcStyles = StyleSheet.create({
   bulletText: { flex: 1, fontSize: 13, lineHeight: 18 },
 });
 
-function DailyRecapsSection({ dark }: { dark: boolean }) {
+export function DailyRecapsSection({ dark }: { dark: boolean }) {
   return (
     <ScrollView contentContainerStyle={{ padding: 12 }}>
       {PLACEHOLDER_RECAPS.map((r, i) => <RecapCard key={r.id} item={r} index={i} dark={dark} />)}
@@ -545,36 +821,13 @@ function DailyRecapsSection({ dark }: { dark: boolean }) {
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// 7. POLICY UPDATES SECTION
-// Port of MobilePolicyUpdatesSection — government policy cards with press-lift
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── POLICY UPDATES SECTION ──────────────────────────────────────────────────
 
 const PLACEHOLDER_POLICIES = [
-  {
-    id: 1, country: '🇺🇸 United States',
-    title: 'SEC Proposes New Crypto Custody Framework for Registered Advisers',
-    description: 'The SEC issued a proposed rule requiring registered investment advisers to use qualified custodians for digital asset holdings.',
-    impact: 'Neutral', date: 'Mar 28, 2026',
-  },
-  {
-    id: 2, country: '🇪🇺 European Union',
-    title: 'MiCA Regulation: Stablecoin Issuers Must Hold 30% in Cash',
-    description: 'Under MiCA\'s updated reserve requirements, stablecoin issuers operating in the EU must maintain 30% of reserves in unencumbered cash deposits.',
-    impact: 'Positive', date: 'Mar 25, 2026',
-  },
-  {
-    id: 3, country: '🇸🇬 Singapore',
-    title: 'MAS Grants Full License to Two Crypto Exchanges',
-    description: 'The Monetary Authority of Singapore awarded full Digital Payment Token service licenses to two major exchanges, expanding the regulated crypto landscape.',
-    impact: 'Positive', date: 'Mar 22, 2026',
-  },
-  {
-    id: 4, country: '🇨🇳 China',
-    title: 'PBOC Expands Digital Yuan Pilot to 26 Cities',
-    description: 'China\'s central bank announced an expansion of its CBDC pilot program, adding 26 new cities and enabling interoperability with major payment platforms.',
-    impact: 'Neutral', date: 'Mar 20, 2026',
-  },
+  { id: 1, country: '🇺🇸 United States', title: 'SEC Proposes New Crypto Custody Framework for Registered Advisers', description: 'The SEC issued a proposed rule requiring registered investment advisers to use qualified custodians for digital asset holdings.', impact: 'Neutral',  date: 'Mar 28, 2026' },
+  { id: 2, country: '🇪🇺 European Union', title: 'MiCA Regulation: Stablecoin Issuers Must Hold 30% in Cash',          description: "Under MiCA's updated reserve requirements, stablecoin issuers operating in the EU must maintain 30% of reserves in unencumbered cash deposits.", impact: 'Positive', date: 'Mar 25, 2026' },
+  { id: 3, country: '🇸🇬 Singapore',      title: 'MAS Grants Full License to Two Crypto Exchanges',                     description: 'The Monetary Authority of Singapore awarded full Digital Payment Token service licenses to two major exchanges, expanding the regulated crypto landscape.', impact: 'Positive', date: 'Mar 22, 2026' },
+  { id: 4, country: '🇨🇳 China',          title: 'PBOC Expands Digital Yuan Pilot to 26 Cities',                        description: "China's central bank announced an expansion of its CBDC pilot program, adding 26 new cities and enabling interoperability with major payment platforms.", impact: 'Neutral',  date: 'Mar 20, 2026' },
 ];
 
 function impactColor(impact: string, dark: boolean) {
@@ -605,12 +858,7 @@ function PolicyCard({ item, dark, index = 0 }: { item: typeof PLACEHOLDER_POLICI
 
   return (
     <Animated.View style={{ opacity: fadeAnim, transform: [{ scale }, { translateY: slideAnim }], marginBottom: 10 }}>
-      <TouchableOpacity
-        onPressIn={onPressIn}
-        onPressOut={onPressOut}
-        activeOpacity={1}
-        style={[pcStyles.card, { backgroundColor: surface, borderColor: border }]}
-      >
+      <TouchableOpacity onPressIn={onPressIn} onPressOut={onPressOut} activeOpacity={1} style={[pcStyles.card, { backgroundColor: surface, borderColor: border }]}>
         <View style={pcStyles.topRow}>
           <Text style={[pcStyles.country, { color: dark ? '#AEB0B4' : '#4B5563' }]}>{item.country}</Text>
           <View style={[pcStyles.impactBadge, { backgroundColor: `${col}22`, borderColor: `${col}44` }]}>
@@ -636,7 +884,7 @@ const pcStyles = StyleSheet.create({
   date:        { fontSize: 11 },
 });
 
-function PolicyUpdatesSection({ dark }: { dark: boolean }) {
+export function PolicyUpdatesSection({ dark }: { dark: boolean }) {
   return (
     <ScrollView contentContainerStyle={{ padding: 12 }}>
       {PLACEHOLDER_POLICIES.map((p, i) => <PolicyCard key={p.id} item={p} index={i} dark={dark} />)}
@@ -644,51 +892,22 @@ function PolicyUpdatesSection({ dark }: { dark: boolean }) {
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// 8. MAIN EXPLORE SCREEN
-// Mirrors Explore.tsx + MobileView.tsx structure
-// Section content fades in on tab switch (mirrors WatchlistDashboard's contentAnim)
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── MAIN EXPLORE SCREEN ─────────────────────────────────────────────────────
 
 export default function ExploreScreen() {
-  const dark = useColorScheme() === 'dark';
-  const [activeSection, setActiveSection] = useState<SectionId>('assets');
-
-  const contentAnim = useRef(new Animated.Value(1)).current;
-
-  const handleSelect = (id: SectionId) => {
-    contentAnim.setValue(0);
-    setActiveSection(id);
-    Animated.timing(contentAnim, { toValue: 1, duration: 250, useNativeDriver: true }).start();
-  };
-
+  const dark   = useColorScheme() === 'dark';
   const bg     = dark ? '#050B14' : '#F3F4F6';
   const border = dark ? '#1F2937' : '#E5E7EB';
 
   return (
     <View style={[xStyles.root, { backgroundColor: bg }]}>
-
-      {/* ── Live Crypto Board marquee ── */}
       <View style={[xStyles.strip, { borderBottomColor: border }]}>
         <LiveCryptoBoard dark={dark} />
       </View>
-
-      {/* ── Market Overview KPI cards ── */}
       <View style={[xStyles.section, { borderBottomColor: border }]}>
         <MarketOverview dark={dark} />
       </View>
-
-      {/* ── Section Tabs ── */}
-      <SectionTabs active={activeSection} onSelect={handleSelect} dark={dark} />
-
-      {/* ── Active section content with fade-in on switch ── */}
-      <Animated.View style={[xStyles.content, { opacity: contentAnim }]}>
-        {activeSection === 'assets'         && <AssetsSection        dark={dark} />}
-        {activeSection === 'top_stories'    && <TopStoriesSection    dark={dark} />}
-        {activeSection === 'daily_recaps'   && <DailyRecapsSection   dark={dark} />}
-        {activeSection === 'policy_updates' && <PolicyUpdatesSection dark={dark} />}
-      </Animated.View>
-
+      <AssetsSection dark={dark} />
     </View>
   );
 }
@@ -697,5 +916,4 @@ const xStyles = StyleSheet.create({
   root:    { flex: 1 },
   strip:   { paddingHorizontal: 12, borderBottomWidth: StyleSheet.hairlineWidth },
   section: { paddingHorizontal: 12, paddingVertical: 8, borderBottomWidth: StyleSheet.hairlineWidth },
-  content: { flex: 1 },
 });

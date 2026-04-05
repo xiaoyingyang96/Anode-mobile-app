@@ -1,47 +1,63 @@
-import { Tabs } from 'expo-router';
-import React from 'react';
-import { Ionicons } from '@expo/vector-icons';
-
+import AppHeader from '@/components/AppHeader';
 import { HapticTab } from '@/components/haptic-tab';
-import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import AppHeader from '@/components/AppHeader';
+import { Ionicons } from '@expo/vector-icons';
+import { Tabs } from 'expo-router';
+import React from 'react';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
 
   return (
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
-        // Replace the default navigator header with the SentimentX-style AppHeader
         header: () => <AppHeader />,
         tabBarButton: HapticTab,
-        // Hide the tab bar — navigation is handled by the hamburger drawer
-        tabBarStyle: { display: 'none' },
+        tabBarStyle: {
+          backgroundColor: isDark ? '#050B14' : '#FFFFFF',
+          borderTopColor: isDark ? '#1F2937' : '#E5E7EB',
+        },
+        tabBarLabelStyle: { fontSize: 11 },
       }}
     >
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
-        }}
-      />
+      <Tabs.Screen name="index" options={{ href: null }} />
       <Tabs.Screen
         name="explore"
         options={{
-          title: 'Explore',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
+          title: 'Assets',
+          tabBarIcon: ({ color }) => <Ionicons name="bar-chart-outline" size={24} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="top-stories"
+        options={{
+          title: 'Stories',
+          tabBarIcon: ({ color }) => <Ionicons name="newspaper-outline" size={24} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="daily-recaps"
+        options={{
+          title: 'Recaps',
+          tabBarIcon: ({ color }) => <Ionicons name="calendar-outline" size={24} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="policy-updates"
+        options={{
+          title: 'Policy',
+          tabBarIcon: ({ color }) => <Ionicons name="document-text-outline" size={24} color={color} />,
         }}
       />
       <Tabs.Screen
         name="watchlists"
         options={{
-          title: 'Watchlists',
-          tabBarIcon: ({ color, focused }: { color: string; focused: boolean }) => (
-            <Ionicons name={focused ? 'bookmark' : 'bookmark-outline'} size={26} color={color} />
+          title: 'Watchlist',
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'bookmark' : 'bookmark-outline'} size={24} color={color} />
           ),
         }}
       />
