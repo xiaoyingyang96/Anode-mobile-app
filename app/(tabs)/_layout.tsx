@@ -53,6 +53,15 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="news"
+        options={{
+          title: 'News',
+          tabBarIcon: ({ color, focused }: { color: string; focused: boolean }) => (
+            <Ionicons name={focused ? 'newspaper' : 'newspaper-outline'} size={26} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="watchlists"
         options={{
           title: 'Watchlist',
