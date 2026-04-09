@@ -103,13 +103,26 @@ function RecapCard({
 export default function MobileDailyRecapsSection() {
   const dark = useColorScheme() === "dark";
   const s = makeStyles(dark);
-  const { recaps, isLoading, isLoadingMore, hasMore, loadMore } = useDailyRecaps();
+  const { recaps, isLoading, isLoadingMore, hasMore, loadMore, error, retry } =
+    useDailyRecaps();
   const [selectedRecap, setSelectedRecap] = useState<DailyRecap | null>(null);
 
   if (isLoading) {
     return (
       <View style={s.centered}>
         <ActivityIndicator size="large" color={dark ? "#00E5A0" : "#00A372"} />
+      </View>
+    );
+  }
+
+  if (error && recaps.length === 0) {
+    return (
+      <View style={s.centered}>
+        <Text style={s.errorTitle}>Unable to load recaps</Text>
+        <Text style={s.errorText}>{error}</Text>
+        <TouchableOpacity style={s.retryButton} onPress={retry} activeOpacity={0.85}>
+          <Text style={s.retryButtonText}>Try again</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -169,6 +182,31 @@ const makeStyles = (dark: boolean) =>
     emptyText: {
       fontSize: 15,
       color: dark ? "#888" : "#666",
+    },
+    errorTitle: {
+      fontSize: 18,
+      fontWeight: "700",
+      color: dark ? "#EEEEEF" : "#111827",
+      marginBottom: 8,
+    },
+    errorText: {
+      maxWidth: 360,
+      fontSize: 14,
+      lineHeight: 20,
+      textAlign: "center",
+      color: dark ? "#AEB0B4" : "#4B5563",
+      marginBottom: 16,
+    },
+    retryButton: {
+      backgroundColor: dark ? "#00E5A0" : "#00A372",
+      borderRadius: 999,
+      paddingHorizontal: 16,
+      paddingVertical: 10,
+    },
+    retryButtonText: {
+      fontSize: 14,
+      fontWeight: "700",
+      color: "#FFFFFF",
     },
     list: {
       padding: 16,

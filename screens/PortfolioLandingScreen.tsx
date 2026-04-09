@@ -10,12 +10,9 @@ import {
   useColorScheme,
 } from 'react-native';
 import Svg, {
-  Cell,
   Defs,
   LinearGradient,
   Path,
-  Pie,
-  PieChart,
   Stop,
 } from 'react-native-svg';
 
@@ -44,7 +41,7 @@ const COPY = {
       id: 'wallet',
       title: 'Connect Your Wallet',
       description:
-        'Simply enter your wallet address (no signature needed!) and we'll sync it right away.',
+        "Simply enter your wallet address (no signature needed!) and we'll sync it right away.",
       icon: 'wallet-outline' as const,
       iconBg: WatchlistColors.primary,
       available: false,
@@ -90,7 +87,7 @@ const COPY = {
     items: [
       {
         q: 'Is connecting my Coinbase account read-only?',
-        a: 'Yes. We request OAuth scopes required to read balances and transactions only. We can't move funds or trade on your behalf.',
+        a: "Yes. We request OAuth scopes required to read balances and transactions only. We can't move funds or trade on your behalf.",
       },
       {
         q: 'What can I connect today?',
@@ -102,7 +99,7 @@ const COPY = {
       },
       {
         q: 'Can I disconnect later?',
-        a: 'Absolutely. You can revoke the connection from our settings and from Coinbase's "Connected Apps." We remove cached tokens immediately.',
+        a: `Absolutely. You can revoke the connection from our settings and from Coinbase's "Connected Apps." We remove cached tokens immediately.`,
       },
       {
         q: 'Do you store my API keys or private keys?',

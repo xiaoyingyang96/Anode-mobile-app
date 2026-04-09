@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { Platform } from "react-native";
 
 const API_BASE = process.env.EXPO_PUBLIC_API_URL;
 
@@ -19,11 +20,17 @@ export function useDailyRecaps() {
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchRecaps = useCallback(async (pageToLoad = 1) => {
     const setter = pageToLoad === 1 ? setIsLoading : setIsLoadingMore;
     setter(true);
     try {
+      setError(null);
+      if (!API_BASE) {
+        throw new Error("EXPO_PUBLIC_API_URL is not set.");
+      }
+
       const res = await fetch(
         `${API_BASE}/api/news/recaps?page=${pageToLoad}`
       );
@@ -34,6 +41,14 @@ export function useDailyRecaps() {
       setPage(pageToLoad);
     } catch (e) {
       console.error("Error fetching recaps:", e);
+      const message =
+        e instanceof Error ? e.message : "Unable to load daily recaps.";
+      const formattedMessage =
+        Platform.OS === "web" && message === "Failed to fetch"
+          ? "Web app could not reach the recap API. This is likely a browser access issue such as CORS."
+          : message;
+      setError(formattedMessage);
+      setHasMore(false);
     } finally {
       setter(false);
     }
@@ -47,5 +62,9 @@ export function useDailyRecaps() {
     if (!isLoadingMore && hasMore) fetchRecaps(page + 1);
   };
 
-  return { recaps, isLoading, isLoadingMore, hasMore, loadMore };
+  const retry = () => {
+    fetchRecaps(1);
+  };
+
+  return { recaps, isLoading, isLoadingMore, hasMore, loadMore, error, retry };
 }
