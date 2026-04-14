@@ -1,21 +1,21 @@
-import React, { useState } from 'react';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import {
-  Modal,
-  View,
-  Text,
-  TouchableOpacity,
-  TextInput,
-  ActivityIndicator,
-  StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
-  Alert,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { WatchlistColors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Watchlist } from '@/types/watchlist';
 import { watchlistApi } from '@/utils/watchlistApi';
+import { Ionicons } from '@expo/vector-icons';
+import React, { useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 
 interface CreateWatchlistModalProps {
   visible: boolean;

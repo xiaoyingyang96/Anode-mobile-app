@@ -35,6 +35,21 @@ export const watchlistApi = {
     }
   },
 
+  // async create(name: string): Promise<ApiResult<Watchlist>> {
+  //   try {
+  //     const headers = await authHeaders();
+  //     const res = await fetch(`${API_BASE}/api/users/watchlist`, {
+  //       method: 'POST',
+  //       headers,
+  //       body: JSON.stringify({ name }),
+  //     });
+  //     if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  //     const data: Watchlist = await res.json();
+  //     return { ok: true, data };
+  //   } catch (e: any) {
+  //     return { ok: false, error: e.message ?? 'Failed to create watchlist' };
+  //   }
+  // },
   async create(name: string): Promise<ApiResult<Watchlist>> {
     try {
       const headers = await authHeaders();
@@ -43,14 +58,15 @@ export const watchlistApi = {
         headers,
         body: JSON.stringify({ name }),
       });
+      const responseText = await res.text();
+      console.log('create response:', responseText);  // 加这行
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data: Watchlist = await res.json();
+      const data: Watchlist = JSON.parse(responseText);
       return { ok: true, data };
     } catch (e: any) {
       return { ok: false, error: e.message ?? 'Failed to create watchlist' };
     }
   },
-
   async update(id: number, payload: { name: string; is_default: boolean }): Promise<ApiResult> {
     try {
       const headers = await authHeaders();

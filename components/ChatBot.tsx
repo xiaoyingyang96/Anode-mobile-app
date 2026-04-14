@@ -1,17 +1,18 @@
+import { useColorScheme } from "@/hooks/use-color-scheme";
+import { supabase } from "@/lib/supabase";
 import { Ionicons } from "@expo/vector-icons";
 import React, { useRef, useState } from "react";
-import { useColorScheme } from "@/hooks/use-color-scheme";
 import {
-    FlatList,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    SafeAreaView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  FlatList,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
 type Message = {
@@ -34,28 +35,43 @@ export default function ChatBot() {
   ]);
   const flatListRef = useRef<FlatList>(null);
 
-  const handleSend = () => {
-    if (!input.trim()) return;
+  const handleSend = async () => {
+  if (!input.trim()) return;
 
-    const userMsg: Message = {
-      id: Date.now().toString(),
-      role: "user",
-      text: input.trim(),
+  const userMsg: Message = {
+    id: Date.now().toString(),
+    role: "user",
+    text: input.trim(),
+  };
+
+  setMessages((prev) => [...prev, userMsg]);
+  setInput("");
+
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    const { data, error } = await supabase.functions.invoke("function_chatbot", {
+      body: { message: userMsg.text },
+      headers: {
+        Authorization: `Bearer ${session?.access_token}`,
+    },
+});
+    const botMsg: Message = {
+      id: (Date.now() + 1).toString(),
+      role: "assistant",
+      text: error ? "Something went wrong, please try again." : data.reply,
     };
 
-    setMessages((prev) => [...prev, userMsg]);
-    setInput("");
-
-    // TODO: replace with real API call
-    setTimeout(() => {
-      const botMsg: Message = {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        text: "I'm still learning! This feature is coming soon.",
-      };
-      setMessages((prev) => [...prev, botMsg]);
-    }, 600);
-  };
+    setMessages((prev) => [...prev, botMsg]);
+  } catch (e) {
+    console.log("catch error:", JSON.stringify(e));
+    const botMsg: Message = {
+      id: (Date.now() + 1).toString(),
+      role: "assistant",
+      text: "Something went wrong, please try again.",
+    };
+    setMessages((prev) => [...prev, botMsg]);
+  }
+};
 
   return (
     <>

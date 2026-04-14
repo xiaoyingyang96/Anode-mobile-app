@@ -1,17 +1,18 @@
-import React from 'react';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { Ionicons } from '@expo/vector-icons';
+import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  TouchableOpacity,
   ActivityIndicator,
   StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 
+import { WatchlistColors } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { useWatchlists } from '@/hooks/useWatchlists';
-import { WatchlistColors } from '@/constants/theme';
+import CreateWatchlistModal from './watchlists/CreateWatchlistModal';
 import WatchlistDashboard from './watchlists/WatchlistDashboard';
 import WatchlistLanding from './watchlists/WatchlistLanding';
 
@@ -20,8 +21,8 @@ export default function WatchlistsScreen() {
   const s = makeStyles(dark);
   const { user, isLoading: authLoading } = useAuth();
   const { watchlists, isLoading, error, refetch } = useWatchlists();
+  const [createOpen, setCreateOpen] = useState(false);
 
-  // Auth or data loading
   if (authLoading || (user && isLoading)) {
     return (
       <View style={s.centered}>
@@ -30,12 +31,10 @@ export default function WatchlistsScreen() {
     );
   }
 
-  // Not signed in → show full landing page
   if (!user) {
     return <WatchlistLanding />;
   }
 
-  // Error state
   if (error || watchlists === null) {
     return (
       <View style={s.centered}>
@@ -49,13 +48,30 @@ export default function WatchlistsScreen() {
     );
   }
 
-  // No watchlists at all
   if (watchlists.length === 0) {
     return (
       <View style={s.centered}>
         <Ionicons name="bookmark-outline" size={56} color={WatchlistColors.primary} />
         <Text style={s.noWatchlistTitle}>No watchlists yet</Text>
-        <Text style={s.noWatchlistSubtitle}>Create your first watchlist to start tracking assets.</Text>
+        <Text style={s.noWatchlistSubtitle}>
+          Create your first watchlist to start tracking assets.
+        </Text>
+        <TouchableOpacity
+          onPress={() => setCreateOpen(true)}
+          style={s.createBtn}
+          activeOpacity={0.85}
+        >
+          <Ionicons name="add" size={18} color="#fff" />
+          <Text style={s.createBtnText}>Create Watchlist</Text>
+        </TouchableOpacity>
+        <CreateWatchlistModal
+          visible={createOpen}
+          onClose={() => setCreateOpen(false)}
+          onCreated={(_newWL) => {
+            setCreateOpen(false);
+            refetch();
+          }}
+        />
       </View>
     );
   }
@@ -110,5 +126,20 @@ const makeStyles = (dark: boolean) =>
       color: WatchlistColors.textSecondary[dark ? 'dark' : 'light'],
       textAlign: 'center',
       lineHeight: 20,
+      marginBottom: 24,
+    },
+    createBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      backgroundColor: WatchlistColors.primary,
+      borderRadius: 12,
+      paddingHorizontal: 24,
+      paddingVertical: 12,
+    },
+    createBtnText: {
+      color: '#fff',
+      fontWeight: '700',
+      fontSize: 15,
     },
   });
