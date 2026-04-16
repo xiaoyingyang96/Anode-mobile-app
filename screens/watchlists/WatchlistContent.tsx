@@ -1,24 +1,24 @@
-import React, { useMemo, useRef } from 'react';
+import { WatchlistColors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useWatchlistContent } from '@/hooks/useWatchlistContent';
+import { AssetTicker, NewsStory, Row, WatchlistOHLCVData } from '@/types/watchlist';
+import { watchlistApi } from '@/utils/watchlistApi';
+import { Ionicons } from '@expo/vector-icons';
+import React, { useMemo, useRef } from 'react';
 import {
-  View,
-  Text,
+  ActivityIndicator,
+  Alert,
   Animated,
   FlatList,
-  TouchableOpacity,
-  Linking,
   Image,
+  Linking,
   StyleSheet,
+  Text,
+  TouchableOpacity,
   useWindowDimensions,
-  Alert,
-  ActivityIndicator,
+  View,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { WatchlistColors } from '@/constants/theme';
-import { AssetTicker, NewsStory, Row, WatchlistOHLCVData } from '@/types/watchlist';
-import { useWatchlistContent } from '@/hooks/useWatchlistContent';
 import WatchlistRow from './WatchlistRow';
-import { watchlistApi } from '@/utils/watchlistApi';
 
 interface WatchlistContentProps {
   assetTickers: AssetTicker[];

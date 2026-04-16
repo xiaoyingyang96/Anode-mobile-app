@@ -59,7 +59,6 @@ export const watchlistApi = {
         body: JSON.stringify({ name }),
       });
       const responseText = await res.text();
-      console.log('create response:', responseText);  // 加这行
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data: Watchlist = JSON.parse(responseText);
       return { ok: true, data };
@@ -124,12 +123,11 @@ export const watchlistApi = {
       return { ok: false, error: e.message ?? 'Failed to add assets' };
     }
   },
-
   async removeAsset(watchlistId: number, ticker: string): Promise<ApiResult> {
     try {
       const headers = await authHeaders();
       const res = await fetch(
-        `${API_BASE}/api/users/watchlist/${watchlistId}/assets/${ticker}`,
+        `${API_BASE}/api/users/watchlist/${watchlistId}/assets/${ticker.toUpperCase()}`,
         { method: 'DELETE', headers },
       );
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -138,7 +136,7 @@ export const watchlistApi = {
       return { ok: false, error: e.message ?? 'Failed to remove asset' };
     }
   },
-
+  
   async fetchOHLCV(tickers: string[]): Promise<ApiResult<any>> {
     try {
       const headers = await authHeaders();
