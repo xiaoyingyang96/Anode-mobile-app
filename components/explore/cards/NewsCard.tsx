@@ -4,11 +4,11 @@ import {
   Text,
   TouchableOpacity,
   View,
-  useColorScheme,
+  useColorScheme
 } from 'react-native';
 
-import { WatchlistColors } from '@/constants/theme';
 import TokenIcon from '@/components/explore/TokenIcon';
+import { WatchlistColors } from '@/constants/theme';
 import { NewsStory } from '@/types/explore';
 
 function formatRelativeTime(dateStr?: string): string {
@@ -127,6 +127,12 @@ export default function NewsCard({
 
 const makeStyles = (dark: boolean) =>
   StyleSheet.create({
+    cardImage: {
+      width: '100%',
+      height: 160,
+      borderRadius: 6,
+      marginBottom: 4,
+    },
     card: {
       borderRadius: 10,
       borderWidth: 1,

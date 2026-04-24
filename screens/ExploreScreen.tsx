@@ -1,11 +1,12 @@
 import { WatchlistColors } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useMarketData } from '@/hooks/useMarketData';
 import { useWatchlists } from '@/hooks/useWatchlists';
 import { Watchlist } from '@/types/watchlist';
 import { watchlistApi } from '@/utils/watchlistApi';
 import { Ionicons } from '@expo/vector-icons';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
@@ -16,11 +17,14 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   TouchableWithoutFeedback,
-  View
+  View,
 } from 'react-native';
-const UP   = WatchlistColors.tickerUp;
+import { CandlestickChart } from 'react-native-wagmi-charts';
+
+const UP = WatchlistColors.tickerUp;
 const DOWN = WatchlistColors.tickerDown;
 
 function deltaColor(up: boolean, dark: boolean) {
@@ -72,7 +76,6 @@ const tcStyles = StyleSheet.create({
 
 export function LiveCryptoBoard({ dark }: { dark: boolean }) {
   const marquee = useRef(new Animated.Value(0)).current;
-
   useEffect(() => {
     const anim = Animated.loop(
       Animated.timing(marquee, { toValue: -HALF_W, duration: 60_000, easing: Easing.linear, useNativeDriver: true }),
@@ -80,7 +83,6 @@ export function LiveCryptoBoard({ dark }: { dark: boolean }) {
     anim.start();
     return () => anim.stop();
   }, []);
-
   const doubled = [...TICKERS, ...TICKERS];
   return (
     <View style={lcbStyles.wrapper}>
@@ -114,7 +116,6 @@ function StatCard({ label, value, change, up, dark, children, index = 0 }: {
 }) {
   const fadeAnim  = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.92)).current;
-
   useEffect(() => {
     const delay = index * 80;
     Animated.parallel([
@@ -122,7 +123,6 @@ function StatCard({ label, value, change, up, dark, children, index = 0 }: {
       Animated.spring(scaleAnim, { toValue: 1, delay, useNativeDriver: true, bounciness: 4, speed: 14 }),
     ]).start();
   }, []);
-
   const bg     = dark ? '#0D1117' : '#F9FAFB';
   const border = dark ? '#1F2937' : '#E5E7EB';
   return (
@@ -177,14 +177,11 @@ const moStyles = StyleSheet.create({
   row:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   value: { fontSize: 14, fontWeight: '700' },
 });
+
 // ─── ADD TO WATCHLIST MODAL ──────────────────────────────────────────────────
 
 function AddToWatchlistModal({ visible, onClose, dark, ticker, name }: {
-  visible: boolean;
-  onClose: () => void;
-  dark: boolean;
-  ticker: string;
-  name: string;
+  visible: boolean; onClose: () => void; dark: boolean; ticker: string; name: string;
 }) {
   const { user } = useAuth();
   const { watchlists } = useWatchlists();
@@ -201,29 +198,20 @@ function AddToWatchlistModal({ visible, onClose, dark, ticker, name }: {
     setAdding(watchlist.id);
     const result = await watchlistApi.addAssetsBatch(watchlist.id, [{ ticker, name }]);
     setAdding(null);
-    if (result.ok) {
-      setAdded(prev => new Set(prev).add(watchlist.id));
-    }
+    if (result.ok) setAdded(prev => new Set(prev).add(watchlist.id));
   };
 
-  const handleClose = () => {
-    setAdded(new Set());
-    onClose();
-  };
+  const handleClose = () => { setAdded(new Set()); onClose(); };
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={handleClose}>
       <TouchableWithoutFeedback onPress={handleClose}>
         <View style={{ ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)' }} />
       </TouchableWithoutFeedback>
-
       <View style={[wlStyles.sheet, { backgroundColor: sheetBg }]}>
-        {/* Handle */}
         <View style={wlStyles.handleRow}>
           <View style={[wlStyles.handle, { backgroundColor: dark ? '#374151' : '#D1D5DB' }]} />
         </View>
-
-        {/* Title */}
         <View style={[wlStyles.header, { borderBottomColor: border }]}>
           <View>
             <Text style={[wlStyles.title, { color: textMain }]}>Add to Watchlist</Text>
@@ -233,8 +221,6 @@ function AddToWatchlistModal({ visible, onClose, dark, ticker, name }: {
             <Ionicons name="close" size={20} color={textSub} />
           </TouchableOpacity>
         </View>
-
-        {/* Not logged in */}
         {!user ? (
           <View style={wlStyles.emptyState}>
             <Ionicons name="lock-closed-outline" size={36} color={textSub} />
@@ -248,12 +234,9 @@ function AddToWatchlistModal({ visible, onClose, dark, ticker, name }: {
         ) : (
           <ScrollView style={{ maxHeight: 320 }}>
             {watchlists.map((wl) => {
-              const isAlready = wl.asset_tickers.some(
-                (t) => t.ticker.toLowerCase() === ticker.toLowerCase()
-              );
+              const isAlready = wl.asset_tickers.some(t => t.ticker.toLowerCase() === ticker.toLowerCase());
               const isAdded = added.has(wl.id);
               const isAdding = adding === wl.id;
-
               return (
                 <TouchableOpacity
                   key={wl.id}
@@ -304,30 +287,103 @@ const wlStyles = StyleSheet.create({
   addedBadge: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3, backgroundColor: `${WatchlistColors.primary}20` },
   addedText:  { fontSize: 11, fontWeight: '600', color: WatchlistColors.primary },
 });
-// ─── ASSETS SECTION ──────────────────────────────────────────────────────────
 
-const PLACEHOLDER_ASSETS = [
-  { id: 'BTC',   name: 'Bitcoin',   price: '$68,420', change: '+2.30%', up: true  },
-  { id: 'ETH',   name: 'Ethereum',  price: '$3,580',  change: '+1.80%', up: true  },
-  { id: 'BNB',   name: 'BNB',       price: '$578',    change: '-0.90%', up: false },
-  { id: 'SOL',   name: 'Solana',    price: '$142.30', change: '+4.20%', up: true  },
-  { id: 'XRP',   name: 'XRP',       price: '$0.582',  change: '-0.50%', up: false },
-  { id: 'DOGE',  name: 'Dogecoin',  price: '$0.124',  change: '+8.10%', up: true  },
-  { id: 'ADA',   name: 'Cardano',   price: '$0.441',  change: '-1.30%', up: false },
-  { id: 'AVAX',  name: 'Avalanche', price: '$36.40',  change: '+3.20%', up: true  },
-  { id: 'LINK',  name: 'Chainlink', price: '$18.45',  change: '-1.20%', up: false },
-  { id: 'MATIC', name: 'Polygon',   price: '$0.710',  change: '+2.10%', up: true  },
-];
+// ─── ASSET DETAIL MODAL (Candlestick) ────────────────────────────────────────
 
-function AssetRow({ item, index, dark, onAddToWatchlist }: {
-  item: typeof PLACEHOLDER_ASSETS[0];
+function AssetDetailModal({ visible, onClose, dark, ticker, name }: {
+  visible: boolean; onClose: () => void; dark: boolean; ticker: string; name: string;
+}) {
+  const [series, setSeries] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const bg = dark ? '#0D1117' : '#FFFFFF';
+  const textMain = dark ? '#EEEEEF' : '#111827';
+  const textSub = dark ? '#AEB0B4' : '#4B5563';
+  const border = dark ? '#1F2937' : '#E5E7EB';
+
+  useEffect(() => {
+    if (!visible || !ticker) return;
+    setLoading(true);
+    setSeries([]);
+    watchlistApi.fetchOHLCV([ticker])
+      .then(result => {
+        if (result.ok && result.data?.data?.[0]?.price_data?.['1d']) {
+          setSeries(result.data.data[0].price_data['1d']);
+        }
+      })
+      .finally(() => setLoading(false));
+  }, [visible, ticker]);
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <TouchableWithoutFeedback onPress={onClose}>
+        <View style={{ ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)' }} />
+      </TouchableWithoutFeedback>
+      <View style={[adStyles.sheet, { backgroundColor: bg }]}>
+        <View style={adStyles.handleRow}>
+          <View style={[adStyles.handle, { backgroundColor: border }]} />
+        </View>
+        <View style={[adStyles.header, { borderBottomColor: border }]}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <Image
+              source={{ uri: `https://assets.coincap.io/assets/icons/${ticker.toLowerCase()}@2x.png` }}
+              style={{ width: 32, height: 32, borderRadius: 16 }}
+            />
+            <View>
+              <Text style={{ fontSize: 16, fontWeight: '700', color: textMain }}>{name}</Text>
+              <Text style={{ fontSize: 12, color: textSub }}>{ticker.toUpperCase()}</Text>
+            </View>
+          </View>
+          <TouchableOpacity onPress={onClose}>
+            <Ionicons name="close" size={20} color={textSub} />
+          </TouchableOpacity>
+        </View>
+        <View style={{ padding: 16, alignItems: 'center' }}>
+          {loading ? (
+            <ActivityIndicator size="large" color={WatchlistColors.primary} style={{ marginTop: 40 }} />
+          ) : series.length >= 2 ? (
+            <CandlestickChart.Provider
+              data={series.map(p => ({
+                timestamp: new Date(p.datetime).getTime(),
+                open: p.open,
+                high: p.high,
+                low: p.low,
+                close: p.close,
+              }))}
+            >
+              <CandlestickChart height={200} width={320}>
+                <CandlestickChart.Candles />
+                <CandlestickChart.Crosshair>
+                  <CandlestickChart.Tooltip />
+                </CandlestickChart.Crosshair>
+              </CandlestickChart>
+            </CandlestickChart.Provider>
+          ) : (
+            <Text style={{ color: textSub, marginTop: 40 }}>No chart data available.</Text>
+          )}
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+const adStyles = StyleSheet.create({
+  sheet:     { position: 'absolute', bottom: 0, left: 0, right: 0, borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingBottom: 40, shadowColor: '#000', shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.2, shadowRadius: 12, elevation: 24 },
+  handleRow: { paddingTop: 10, paddingBottom: 4, alignItems: 'center' },
+  handle:    { width: 40, height: 4, borderRadius: 999 },
+  header:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: StyleSheet.hairlineWidth },
+});
+
+// ─── ASSETS SECTION (Real Data) ──────────────────────────────────────────────
+
+function RealAssetRow({ item, index, dark, onAddToWatchlist, onPress }: {
+  item: { symbol: string; name?: string; price: number; changePct: number };
   index: number;
   dark: boolean;
   onAddToWatchlist: (ticker: string, name: string) => void;
+  onPress: (ticker: string, name: string) => void;
 }) {
   const fadeAnim  = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(14)).current;
-
   useEffect(() => {
     const delay = Math.min(index * 45, 300);
     Animated.parallel([
@@ -338,29 +394,37 @@ function AssetRow({ item, index, dark, onAddToWatchlist }: {
 
   const surface = dark ? '#111827' : '#FFFFFF';
   const border  = dark ? '#1F2937' : '#E5E7EB';
-  const col     = deltaColor(item.up, dark);
-  const uri     = `https://assets.coincap.io/assets/icons/${item.id.toLowerCase()}@2x.png`;
+  const isUp    = item.changePct >= 0;
+  const col     = deltaColor(isUp, dark);
+  const cleanSymbol = item.symbol.replace(/-USD$/, '').toLowerCase();
+  const uri = `https://assets.coincap.io/assets/icons/${cleanSymbol}@2x.png`;
+  const priceStr = item.price < 1
+    ? `$${item.price.toFixed(6)}`
+    : `$${item.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const changeStr = `${isUp ? '+' : ''}${item.changePct.toFixed(2)}%`;
 
   return (
-    <Animated.View style={[asStyles.row, { backgroundColor: surface, borderBottomColor: border }, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-      <Text style={[asStyles.num, { color: dark ? '#AEB0B4' : '#4B5563' }]}>{index + 1}</Text>
-      <Image source={{ uri }} style={asStyles.logo} />
-      <View style={asStyles.nameCol}>
-        <Text style={[asStyles.name, { color: dark ? '#EEEEEF' : '#111827' }]}>{item.name}</Text>
-        <Text style={[asStyles.ticker, { color: dark ? '#AEB0B4' : '#4B5563' }]}>{item.id}</Text>
-      </View>
-      <View style={asStyles.priceCol}>
-        <Text style={[asStyles.price, { color: dark ? '#EEEEEF' : '#111827' }]}>{item.price}</Text>
-        <Text style={[asStyles.change, { color: col }]}>{item.change}</Text>
-      </View>
-      <TouchableOpacity
-        onPress={() => onAddToWatchlist(item.id, item.name)}
-        style={asStyles.addBtn}
-        activeOpacity={0.7}
-      >
-        <Ionicons name="add-circle-outline" size={22} color={WatchlistColors.primary} />
-      </TouchableOpacity>
-    </Animated.View>
+    <TouchableOpacity onPress={() => onPress(item.symbol.replace(/-USD$/, ''), item.name ?? item.symbol)} activeOpacity={0.7}>
+      <Animated.View style={[asStyles.row, { backgroundColor: surface, borderBottomColor: border }, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+        <Text style={[asStyles.num, { color: dark ? '#AEB0B4' : '#4B5563' }]}>{index + 1}</Text>
+        <Image source={{ uri }} style={asStyles.logo} />
+        <View style={asStyles.nameCol}>
+          <Text style={[asStyles.name, { color: dark ? '#EEEEEF' : '#111827' }]}>{item.name ?? item.symbol}</Text>
+          <Text style={[asStyles.ticker, { color: dark ? '#AEB0B4' : '#4B5563' }]}>{item.symbol.toUpperCase()}</Text>
+        </View>
+        <View style={asStyles.priceCol}>
+          <Text style={[asStyles.price, { color: dark ? '#EEEEEF' : '#111827' }]}>{priceStr}</Text>
+          <Text style={[asStyles.change, { color: col }]}>{changeStr}</Text>
+        </View>
+        <TouchableOpacity
+          onPress={() => onAddToWatchlist(item.symbol.replace(/-USD$/, ''), item.name ?? item.symbol)}
+          style={asStyles.addBtn}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="add-circle-outline" size={22} color={WatchlistColors.primary} />
+        </TouchableOpacity>
+      </Animated.View>
+    </TouchableOpacity>
   );
 }
 
@@ -374,16 +438,36 @@ const asStyles = StyleSheet.create({
   priceCol: { alignItems: 'flex-end' },
   price:    { fontSize: 14, fontWeight: '600' },
   change:   { fontSize: 12, fontWeight: '600', marginTop: 2 },
-  addBtn: { paddingLeft: 8, paddingVertical: 4 }
+  addBtn:   { paddingLeft: 8, paddingVertical: 4 },
 });
 
 export function AssetsSection({ dark }: { dark: boolean }) {
+  const { rows, isLoading, error } = useMarketData('1d');
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedTicker, setSelectedTicker] = useState('');
   const [selectedName, setSelectedName] = useState('');
+  const [chartVisible, setChartVisible] = useState(false);
+  const [chartTicker, setChartTicker] = useState('');
+  const [chartName, setChartName] = useState('');
 
   const hdr     = dark ? '#0D1117' : '#F3F4F6';
   const hdrText = dark ? '#AEB0B4' : '#4B5563';
+
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator size="large" color={WatchlistColors.primary} />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+        <Text style={{ color: dark ? '#AEB0B4' : '#4B5563' }}>Failed to load assets.</Text>
+      </View>
+    );
+  }
 
   return (
     <>
@@ -395,9 +479,9 @@ export function AssetsSection({ dark }: { dark: boolean }) {
           <Text style={{ fontSize: 11, fontWeight: '700', color: hdrText, textTransform: 'uppercase', letterSpacing: 0.4 }}>Price / 24h</Text>
           <View style={{ width: 30 }} />
         </View>
-        {PLACEHOLDER_ASSETS.map((a, i) => (
-          <AssetRow
-            key={a.id}
+        {rows.map((a, i) => (
+          <RealAssetRow
+            key={a.symbol}
             item={a}
             index={i}
             dark={dark}
@@ -405,6 +489,11 @@ export function AssetsSection({ dark }: { dark: boolean }) {
               setSelectedTicker(ticker);
               setSelectedName(name);
               setModalVisible(true);
+            }}
+            onPress={(ticker, name) => {
+              setChartTicker(ticker);
+              setChartName(name);
+              setChartVisible(true);
             }}
           />
         ))}
@@ -416,21 +505,37 @@ export function AssetsSection({ dark }: { dark: boolean }) {
         ticker={selectedTicker}
         name={selectedName}
       />
+      <AssetDetailModal
+        visible={chartVisible}
+        onClose={() => setChartVisible(false)}
+        dark={dark}
+        ticker={chartTicker}
+        name={chartName}
+      />
     </>
   );
 }
 
 // ─── NEWS DETAIL MODAL ───────────────────────────────────────────────────────
 
+interface NewsItem {
+  id: number;
+  title: string;
+  url: string;
+  image_url: string;
+  publisher: string;
+  published_at: string;
+  summary: string;
+  naive_class: -1 | 0 | 1;
+  takeaways: string[];
+  tags: string[];
+  sources: string[];
+}
 
 function NewsDetailModal({ item, visible, onClose, dark }: {
-  item: NewsItem | null;
-  visible: boolean;
-  onClose: () => void;
-  dark: boolean;
+  item: NewsItem | null; visible: boolean; onClose: () => void; dark: boolean;
 }) {
   const slideAnim = useRef(new Animated.Value(800)).current;
-
   useEffect(() => {
     if (visible) {
       Animated.spring(slideAnim, { toValue: 0, useNativeDriver: true, bounciness: 0, speed: 18 }).start();
@@ -441,12 +546,7 @@ function NewsDetailModal({ item, visible, onClose, dark }: {
 
   if (!item) return null;
 
-  const accent = item.naive_class === 1
-    ? UP[dark ? 'dark' : 'light']
-    : item.naive_class === -1
-    ? DOWN[dark ? 'dark' : 'light']
-    : '#B45309';
-
+  const accent   = item.naive_class === 1 ? UP[dark ? 'dark' : 'light'] : item.naive_class === -1 ? DOWN[dark ? 'dark' : 'light'] : '#B45309';
   const sheetBg  = dark ? '#0D1117' : '#FFFFFF';
   const surface  = dark ? '#111827' : '#F9FAFB';
   const border   = dark ? '#1F2937' : '#E5E7EB';
@@ -455,50 +555,26 @@ function NewsDetailModal({ item, visible, onClose, dark }: {
 
   return (
     <Modal visible={visible} transparent animationType="none" onRequestClose={onClose} statusBarTranslucent>
-      {/* Backdrop */}
       <TouchableWithoutFeedback onPress={onClose}>
         <View style={{ ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.6)' }} />
       </TouchableWithoutFeedback>
-
-      {/* Sheet */}
-      <Animated.View style={[
-        ndStyles.sheet,
-        { backgroundColor: sheetBg, transform: [{ translateY: slideAnim }] }
-      ]}>
-        {/* Handle */}
+      <Animated.View style={[ndStyles.sheet, { backgroundColor: sheetBg, transform: [{ translateY: slideAnim }] }]}>
         <View style={ndStyles.handleRow}>
           <View style={[ndStyles.handle, { backgroundColor: dark ? '#374151' : '#D1D5DB' }]} />
         </View>
-
-        {/* Close button */}
         <TouchableOpacity onPress={onClose} style={ndStyles.closeBtn} activeOpacity={0.7}>
           <Ionicons name="close" size={20} color={textSub} />
         </TouchableOpacity>
-
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={ndStyles.scroll}>
-
-          {/* Publisher + sentiment dot */}
           <View style={ndStyles.publisherRow}>
             <View style={[ndStyles.dot, { backgroundColor: accent }]} />
             <Text style={[ndStyles.publisher, { color: textSub }]}>{item.publisher}</Text>
           </View>
-
-          {/* Title */}
           <Text style={[ndStyles.title, { color: textMain }]}>{item.title}</Text>
-
-          {/* Published time */}
           <Text style={[ndStyles.time, { color: textSub }]}>
-            Published: {new Date(item.published_at.replace(' +0000 UTC', 'Z').replace(' ', 'T')).toLocaleString('en-US', {
-              month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit'
-            })}
+            Published: {new Date(item.published_at.replace(' +0000 UTC', 'Z').replace(' ', 'T')).toLocaleString('en-US', { month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}
           </Text>
-
-          {/* Image */}
-          {item.image_url ? (
-            <Image source={{ uri: item.image_url }} style={ndStyles.image} resizeMode="cover" />
-          ) : null}
-
-          {/* Key Takeaways */}
+          {item.image_url ? <Image source={{ uri: item.image_url }} style={ndStyles.image} resizeMode="cover" /> : null}
           {item.takeaways?.length > 0 && (
             <View style={[ndStyles.section, { backgroundColor: surface, borderColor: border }]}>
               <View style={ndStyles.sectionHeader}>
@@ -515,8 +591,6 @@ function NewsDetailModal({ item, visible, onClose, dark }: {
               ))}
             </View>
           )}
-
-          {/* Summary */}
           {item.summary && (
             <View style={[ndStyles.section, { backgroundColor: surface, borderColor: border }]}>
               <View style={ndStyles.sectionHeader}>
@@ -526,8 +600,6 @@ function NewsDetailModal({ item, visible, onClose, dark }: {
               <Text style={[ndStyles.summaryText, { color: textSub }]}>{item.summary}</Text>
             </View>
           )}
-
-          {/* Related Tags */}
           {item.tags?.length > 0 && (
             <View style={ndStyles.tagsSection}>
               <Text style={[ndStyles.sectionTitle, { color: textMain, marginBottom: 8 }]}>Related Tags</Text>
@@ -540,8 +612,6 @@ function NewsDetailModal({ item, visible, onClose, dark }: {
               </View>
             </View>
           )}
-
-          {/* Reference Sources */}
           {item.sources?.length > 0 && (
             <View style={[ndStyles.section, { backgroundColor: surface, borderColor: border }]}>
               <View style={ndStyles.sectionHeader}>
@@ -553,25 +623,16 @@ function NewsDetailModal({ item, visible, onClose, dark }: {
                 return (
                   <TouchableOpacity key={i} onPress={() => Linking.openURL(src)} style={ndStyles.sourceRow} activeOpacity={0.7}>
                     <Ionicons name="open-outline" size={14} color={WatchlistColors.primary} />
-                    <Text style={[ndStyles.sourceText, { color: WatchlistColors.primary }]} numberOfLines={1}>
-                      {domain}: {src}
-                    </Text>
+                    <Text style={[ndStyles.sourceText, { color: WatchlistColors.primary }]} numberOfLines={1}>{domain}: {src}</Text>
                   </TouchableOpacity>
                 );
               })}
             </View>
           )}
-
-          {/* Read Full Article */}
-          <TouchableOpacity
-            onPress={() => Linking.openURL(item.url)}
-            style={[ndStyles.readBtn, { borderColor: WatchlistColors.primary }]}
-            activeOpacity={0.8}
-          >
+          <TouchableOpacity onPress={() => Linking.openURL(item.url)} style={[ndStyles.readBtn, { borderColor: WatchlistColors.primary }]} activeOpacity={0.8}>
             <Ionicons name="open-outline" size={16} color={WatchlistColors.primary} />
             <Text style={[ndStyles.readBtnText, { color: WatchlistColors.primary }]}>Read Full Article</Text>
           </TouchableOpacity>
-
         </ScrollView>
       </Animated.View>
     </Modal>
@@ -579,50 +640,37 @@ function NewsDetailModal({ item, visible, onClose, dark }: {
 }
 
 const ndStyles = StyleSheet.create({
-  sheet:         { position: 'absolute', bottom: 0, left: 0, right: 0, maxHeight: '92%', borderTopLeftRadius: 20, borderTopRightRadius: 20, shadowColor: '#000', shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.2, shadowRadius: 12, elevation: 24 },
-  handleRow:     { paddingTop: 10, paddingBottom: 4, alignItems: 'center' },
-  handle:        { width: 40, height: 4, borderRadius: 999 },
-  closeBtn:      { position: 'absolute', top: 12, right: 16, width: 32, height: 32, alignItems: 'center', justifyContent: 'center', zIndex: 10 },
-  scroll:        { paddingHorizontal: 16, paddingBottom: 40, paddingTop: 8 },
-  publisherRow:  { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
-  dot:           { width: 8, height: 8, borderRadius: 4 },
-  publisher:     { fontSize: 12, fontWeight: '600' },
-  title:         { fontSize: 20, fontWeight: '700', lineHeight: 28, marginBottom: 6 },
-  time:          { fontSize: 12, marginBottom: 14 },
-  image:         { width: '100%', height: 200, borderRadius: 12, marginBottom: 16 },
-  section:       { borderRadius: 12, borderWidth: 1, padding: 14, marginBottom: 14 },
-  sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
-  accentBar:     { width: 3, height: 16, borderRadius: 2 },
-  sectionTitle:  { fontSize: 15, fontWeight: '700' },
-  takeawayRow:   { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 10 },
-  takeawayNum:   { width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
+  sheet:           { position: 'absolute', bottom: 0, left: 0, right: 0, maxHeight: '92%', borderTopLeftRadius: 20, borderTopRightRadius: 20, shadowColor: '#000', shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.2, shadowRadius: 12, elevation: 24 },
+  handleRow:       { paddingTop: 10, paddingBottom: 4, alignItems: 'center' },
+  handle:          { width: 40, height: 4, borderRadius: 999 },
+  closeBtn:        { position: 'absolute', top: 12, right: 16, width: 32, height: 32, alignItems: 'center', justifyContent: 'center', zIndex: 10 },
+  scroll:          { paddingHorizontal: 16, paddingBottom: 40, paddingTop: 8 },
+  publisherRow:    { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
+  dot:             { width: 8, height: 8, borderRadius: 4 },
+  publisher:       { fontSize: 12, fontWeight: '600' },
+  title:           { fontSize: 20, fontWeight: '700', lineHeight: 28, marginBottom: 6 },
+  time:            { fontSize: 12, marginBottom: 14 },
+  image:           { width: '100%', height: 200, borderRadius: 12, marginBottom: 16 },
+  section:         { borderRadius: 12, borderWidth: 1, padding: 14, marginBottom: 14 },
+  sectionHeader:   { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
+  accentBar:       { width: 3, height: 16, borderRadius: 2 },
+  sectionTitle:    { fontSize: 15, fontWeight: '700' },
+  takeawayRow:     { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 10 },
+  takeawayNum:     { width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
   takeawayNumText: { fontSize: 11, fontWeight: '700', color: '#fff' },
-  takeawayText:  { flex: 1, fontSize: 13, lineHeight: 19 },
-  summaryText:   { fontSize: 13, lineHeight: 20 },
-  tagsSection:   { marginBottom: 14 },
-  tagsRow:       { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  tag:           { borderWidth: 1, borderRadius: 6, paddingHorizontal: 10, paddingVertical: 4 },
-  tagText:       { fontSize: 12, fontWeight: '600' },
-  sourceRow:     { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginBottom: 8 },
-  sourceText:    { fontSize: 12, flex: 1 },
-  readBtn:       { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderWidth: 1.5, borderRadius: 12, paddingVertical: 14, marginTop: 4 },
-  readBtnText:   { fontSize: 15, fontWeight: '700' },
+  takeawayText:    { flex: 1, fontSize: 13, lineHeight: 19 },
+  summaryText:     { fontSize: 13, lineHeight: 20 },
+  tagsSection:     { marginBottom: 14 },
+  tagsRow:         { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  tag:             { borderWidth: 1, borderRadius: 6, paddingHorizontal: 10, paddingVertical: 4 },
+  tagText:         { fontSize: 12, fontWeight: '600' },
+  sourceRow:       { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginBottom: 8 },
+  sourceText:      { fontSize: 12, flex: 1 },
+  readBtn:         { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderWidth: 1.5, borderRadius: 12, paddingVertical: 14, marginTop: 4 },
+  readBtnText:     { fontSize: 15, fontWeight: '700' },
 });
 
 // ─── TOP STORIES SECTION ─────────────────────────────────────────────────────
-interface NewsItem {
-  id: number;
-  title: string;
-  url: string;
-  image_url: string;
-  publisher: string;
-  published_at: string;
-  summary: string;
-  naive_class: -1 | 0 | 1;
-  takeaways: string[];
-  tags: string[];
-  sources: string[];
-}
 
 function timeAgo(dateStr: string): string {
   const cleaned = dateStr.replace(' +0000 UTC', 'Z').replace(' ', 'T');
@@ -639,7 +687,6 @@ function NewsCard({ item, dark, index = 0, onPress }: {
   const scale     = useRef(new Animated.Value(1)).current;
   const fadeAnim  = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(16)).current;
-
   useEffect(() => {
     const delay = Math.min(index * 60, 300);
     Animated.parallel([
@@ -647,30 +694,15 @@ function NewsCard({ item, dark, index = 0, onPress }: {
       Animated.timing(slideAnim, { toValue: 0, duration: 320, delay, useNativeDriver: true }),
     ]).start();
   }, []);
-
   const onPressIn  = () => Animated.spring(scale, { toValue: 0.97, useNativeDriver: true, speed: 60, bounciness: 0 }).start();
   const onPressOut = () => Animated.spring(scale, { toValue: 1,    useNativeDriver: true, speed: 40, bounciness: 5 }).start();
-
   const surface = dark ? '#111827' : '#FFFFFF';
-  const accent  = item.naive_class === 1
-    ? UP[dark ? 'dark' : 'light']
-    : item.naive_class === -1
-    ? DOWN[dark ? 'dark' : 'light']
-    : '#B45309';
-
+  const accent  = item.naive_class === 1 ? UP[dark ? 'dark' : 'light'] : item.naive_class === -1 ? DOWN[dark ? 'dark' : 'light'] : '#B45309';
   return (
     <Animated.View style={{ opacity: fadeAnim, transform: [{ scale }, { translateY: slideAnim }] }}>
-      <TouchableOpacity
-        onPress={onPress}
-        onPressIn={onPressIn}
-        onPressOut={onPressOut}
-        activeOpacity={1}
-        style={[ncStyles.card, { backgroundColor: surface }]}
-      >
+      <TouchableOpacity onPress={onPress} onPressIn={onPressIn} onPressOut={onPressOut} activeOpacity={1} style={[ncStyles.card, { backgroundColor: surface }]}>
         <View style={[ncStyles.accentTop, { backgroundColor: accent }]} />
-        {item.image_url ? (
-          <Image source={{ uri: item.image_url }} style={ncStyles.image} resizeMode="cover" />
-        ) : null}
+        {item.image_url ? <Image source={{ uri: item.image_url }} style={ncStyles.image} resizeMode="cover" /> : null}
         <View style={ncStyles.body}>
           <Text style={[ncStyles.title, { color: dark ? '#EEEEEF' : '#111827' }]} numberOfLines={2}>{item.title}</Text>
           <View style={ncStyles.meta}>
@@ -694,50 +726,133 @@ const ncStyles = StyleSheet.create({
   time:      { fontSize: 11 },
 });
 
+const TS_TAGS = [
+  { id: 'regulation', label: 'Regulation' },
+  { id: 'defi', label: 'DeFi' },
+  { id: 'nft', label: 'NFT' },
+  { id: 'market', label: 'Market' },
+  { id: 'blockchain', label: 'Blockchain' },
+  { id: 'adoption', label: 'Adoption' },
+  { id: 'security', label: 'Security' },
+  { id: 'mining', label: 'Mining' },
+];
+
 export function TopStoriesSection({ dark }: { dark: boolean }) {
   const [stories, setStories] = useState<NewsItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedStory, setSelectedStory] = useState<NewsItem | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const [search, setSearch] = useState('');
+  const [activeTags, setActiveTags] = useState<string[]>([]);
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => {
-    fetch('https://pinkpenguin.anode.news/api/news/stories?locale=en-US&page=1')
-      .then(res => res.json())
-      .then(data => setStories(data))
-      .catch(err => console.error(err))
-      .finally(() => setIsLoading(false));
+  const fetchStories = useCallback(async (keyword: string, tags: string[]) => {
+    setIsLoading(true);
+    try {
+      let query = 'page=1';
+      if (keyword) query += `&keyword=${encodeURIComponent(keyword)}`;
+      if (tags.length > 0) query += `&tags=${tags.map(t => t.replace(/\s+/g, '+')).join('-')}`;
+      const res = await fetch(`https://pinkpenguin.anode.news/api/news/stories?${query}`);
+      const data = await res.json();
+      setStories(data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
-  if (isLoading) {
-    return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator size="large" color={WatchlistColors.primary} />
-      </View>
-    );
-  }
+  useEffect(() => {
+    fetchStories('', []);
+  }, [fetchStories]);
+
+  const handleSearch = (text: string) => {
+    setSearch(text);
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(() => {
+      fetchStories(text, activeTags);
+    }, 400);
+  };
+
+  const toggleTag = (tagId: string) => {
+    const next = activeTags.includes(tagId)
+      ? activeTags.filter(t => t !== tagId)
+      : activeTags.length >= 2 ? activeTags : [...activeTags, tagId];
+    setActiveTags(next);
+    fetchStories(search, next);
+  };
+
+  const clearFilters = () => {
+    setActiveTags([]);
+    setSearch('');
+    fetchStories('', []);
+  };
+
+  const hasFilters = activeTags.length > 0 || search.length > 0;
+  const border = dark ? '#1F2937' : '#E5E7EB';
+  const textSub = dark ? '#AEB0B4' : '#4B5563';
 
   return (
     <>
-      <ScrollView contentContainerStyle={{ padding: 12 }}>
-        {stories.map((s, i) => (
-          <NewsCard
-            key={s.id}
-            item={s}
-            index={i}
-            dark={dark}
-            onPress={() => {
-              setSelectedStory(s);
-              setModalVisible(true);
-            }}
+      {/* Search bar */}
+      <View style={{ paddingHorizontal: 12, paddingTop: 8, paddingBottom: 4 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', borderRadius: 10, borderWidth: 1, borderColor: border, backgroundColor: dark ? '#0D1117' : '#FFFFFF', height: 42 }}>
+          <Ionicons name="search-outline" size={16} color={textSub} style={{ marginLeft: 12 }} />
+          <TextInput
+            style={{ flex: 1, height: 42, paddingHorizontal: 10, fontSize: 14, color: dark ? '#EEEEEF' : '#111827' }}
+            placeholder="Search news..."
+            placeholderTextColor={textSub}
+            value={search}
+            onChangeText={handleSearch}
+            returnKeyType="search"
           />
-        ))}
-      </ScrollView>
-      <NewsDetailModal
-        item={selectedStory}
-        visible={modalVisible}
-        onClose={() => setModalVisible(false)}
-        dark={dark}
-      />
+          {search.length > 0 && (
+            <TouchableOpacity onPress={() => handleSearch('')} hitSlop={8} style={{ marginRight: 12 }}>
+              <Ionicons name="close-circle" size={16} color={textSub} />
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+
+      {/* Tag filters */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingBottom: 8 }}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
+          {TS_TAGS.map(tag => {
+            const isActive = activeTags.includes(tag.id);
+            return (
+              <TouchableOpacity
+                key={tag.id}
+                onPress={() => toggleTag(tag.id)}
+                activeOpacity={0.7}
+                style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: isActive ? WatchlistColors.primary : border, backgroundColor: isActive ? WatchlistColors.primaryMuted : (dark ? '#0D1117' : '#FFFFFF') }}
+              >
+                <Text style={{ fontSize: 12, fontWeight: isActive ? '700' : '500', color: isActive ? WatchlistColors.primary : textSub }}>
+                  {tag.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+        {hasFilters && (
+          <TouchableOpacity onPress={clearFilters} style={{ paddingLeft: 10 }}>
+            <Text style={{ fontSize: 12, color: WatchlistColors.primary, fontWeight: '600' }}>Clear</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {/* Stories */}
+      {isLoading ? (
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator size="large" color={WatchlistColors.primary} />
+        </View>
+      ) : (
+        <ScrollView contentContainerStyle={{ padding: 12 }}>
+          {stories.map((s, i) => (
+            <NewsCard key={s.id} item={s} index={i} dark={dark} onPress={() => { setSelectedStory(s); setModalVisible(true); }} />
+          ))}
+        </ScrollView>
+      )}
+      <NewsDetailModal item={selectedStory} visible={modalVisible} onClose={() => setModalVisible(false)} dark={dark} />
     </>
   );
 }
@@ -745,28 +860,15 @@ export function TopStoriesSection({ dark }: { dark: boolean }) {
 // ─── DAILY RECAPS SECTION ────────────────────────────────────────────────────
 
 const PLACEHOLDER_RECAPS = [
-  {
-    id: 1, date: 'Today — Apr 1, 2026',
-    summary: 'Bitcoin broke above $68K on strong institutional inflows. Ethereum L2 TVL hit a new record. Federal Reserve signaled rate stability.',
-    bullets: ['BTC +2.3% — record ETF inflows', 'ETH L2 TVL surpasses $45B', 'Fed holds rates, crypto reacts positively'],
-  },
-  {
-    id: 2, date: 'Yesterday — Mar 31, 2026',
-    summary: "Markets consolidated after last week's rally. Solana saw brief network congestion during a major NFT launch.",
-    bullets: ['SOL congestion during Tensor launch', 'DeFi TVL steady at $180B', 'SEC reviewed new custody rules'],
-  },
-  {
-    id: 3, date: 'Mar 30, 2026',
-    summary: 'Positive momentum across altcoins. DOGE surged 8% on renewed retail interest. BNB dropped on regulatory concerns.',
-    bullets: ['DOGE +8.1% on retail surge', 'BNB -2.1% amid regulatory news', 'Ripple case update: new document disclosure'],
-  },
+  { id: 1, date: 'Today — Apr 1, 2026', summary: 'Bitcoin broke above $68K on strong institutional inflows. Ethereum L2 TVL hit a new record. Federal Reserve signaled rate stability.', bullets: ['BTC +2.3% — record ETF inflows', 'ETH L2 TVL surpasses $45B', 'Fed holds rates, crypto reacts positively'] },
+  { id: 2, date: 'Yesterday — Mar 31, 2026', summary: "Markets consolidated after last week's rally. Solana saw brief network congestion during a major NFT launch.", bullets: ['SOL congestion during Tensor launch', 'DeFi TVL steady at $180B', 'SEC reviewed new custody rules'] },
+  { id: 3, date: 'Mar 30, 2026', summary: 'Positive momentum across altcoins. DOGE surged 8% on renewed retail interest. BNB dropped on regulatory concerns.', bullets: ['DOGE +8.1% on retail surge', 'BNB -2.1% amid regulatory news', 'Ripple case update: new document disclosure'] },
 ];
 
 function RecapCard({ item, dark, index = 0 }: { item: typeof PLACEHOLDER_RECAPS[0]; dark: boolean; index?: number }) {
   const scale     = useRef(new Animated.Value(1)).current;
   const fadeAnim  = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(16)).current;
-
   useEffect(() => {
     const delay = Math.min(index * 70, 280);
     Animated.parallel([
@@ -774,13 +876,10 @@ function RecapCard({ item, dark, index = 0 }: { item: typeof PLACEHOLDER_RECAPS[
       Animated.timing(slideAnim, { toValue: 0, duration: 320, delay, useNativeDriver: true }),
     ]).start();
   }, []);
-
   const onPressIn  = () => Animated.spring(scale, { toValue: 0.97, useNativeDriver: true, speed: 60, bounciness: 0 }).start();
   const onPressOut = () => Animated.spring(scale, { toValue: 1,    useNativeDriver: true, speed: 40, bounciness: 5 }).start();
-
   const surface = dark ? '#111827' : '#FFFFFF';
   const border  = dark ? '#1F2937' : '#E5E7EB';
-
   return (
     <Animated.View style={{ opacity: fadeAnim, transform: [{ scale }, { translateY: slideAnim }], marginBottom: 10 }}>
       <TouchableOpacity onPressIn={onPressIn} onPressOut={onPressOut} activeOpacity={1} style={[rcStyles.card, { backgroundColor: surface, borderColor: border }]}>
@@ -840,7 +939,6 @@ function PolicyCard({ item, dark, index = 0 }: { item: typeof PLACEHOLDER_POLICI
   const scale     = useRef(new Animated.Value(1)).current;
   const fadeAnim  = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(16)).current;
-
   useEffect(() => {
     const delay = Math.min(index * 70, 280);
     Animated.parallel([
@@ -848,14 +946,11 @@ function PolicyCard({ item, dark, index = 0 }: { item: typeof PLACEHOLDER_POLICI
       Animated.timing(slideAnim, { toValue: 0, duration: 320, delay, useNativeDriver: true }),
     ]).start();
   }, []);
-
   const onPressIn  = () => Animated.spring(scale, { toValue: 0.97, useNativeDriver: true, speed: 60, bounciness: 0 }).start();
   const onPressOut = () => Animated.spring(scale, { toValue: 1,    useNativeDriver: true, speed: 40, bounciness: 5 }).start();
-
   const surface = dark ? '#111827' : '#FFFFFF';
   const border  = dark ? '#1F2937' : '#E5E7EB';
   const col     = impactColor(item.impact, dark);
-
   return (
     <Animated.View style={{ opacity: fadeAnim, transform: [{ scale }, { translateY: slideAnim }], marginBottom: 10 }}>
       <TouchableOpacity onPressIn={onPressIn} onPressOut={onPressOut} activeOpacity={1} style={[pcStyles.card, { backgroundColor: surface, borderColor: border }]}>
@@ -898,7 +993,6 @@ export default function ExploreScreen() {
   const dark   = useColorScheme() === 'dark';
   const bg     = dark ? '#050B14' : '#F3F4F6';
   const border = dark ? '#1F2937' : '#E5E7EB';
-
   return (
     <View style={[xStyles.root, { backgroundColor: bg }]}>
       <View style={[xStyles.strip, { borderBottomColor: border }]}>

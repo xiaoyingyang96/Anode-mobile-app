@@ -14,9 +14,9 @@ import {
 
 import { Ionicons } from '@expo/vector-icons';
 
-import { Colors, WatchlistColors } from '@/constants/theme';
 import NewsCard from '@/components/explore/cards/NewsCard';
 import NewsDetailModal from '@/components/explore/NewsDetailModal';
+import { Colors, WatchlistColors } from '@/constants/theme';
 import { NewsStory } from '@/types/explore';
 
 const API_BASE = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
@@ -71,13 +71,16 @@ export default function TopStoriesScreen() {
       const setter = reset ? setLoading : setLoadingMore;
       setter(true);
       try {
-        let query = `locale=en&page=${pageToLoad}`;
+        // let query = `locale=en&page=${pageToLoad}`;
+        let query = `page=${pageToLoad}`;
         if (keyword) query += `&keyword=${encodeURIComponent(keyword)}`;
         if (tags.length > 0)
           query += `&tags=${tags.map((t) => t.replace(/\s+/g, '+')).join('-')}`;
         if (publisher) query += `&publisher=${encodeURIComponent(publisher)}`;
 
         const res = await fetch(`${API_BASE}/api/news/stories?${query}`);
+        console.log('fetch URL:', `${API_BASE}/api/news/stories?${query}`);
+        console.log('status:', res.status);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = (await res.json()) as NewsStory[];
 
@@ -160,11 +163,6 @@ export default function TopStoriesScreen() {
   return (
     <SafeAreaView style={s.safeArea}>
       <View style={s.container}>
-        {/* Page title */}
-        <View style={s.titleRow}>
-          <Text style={s.pageTitle}>Top Stories</Text>
-        </View>
-
         {/* Search bar */}
         <View style={s.searchRow}>
           <View style={s.searchBox}>
