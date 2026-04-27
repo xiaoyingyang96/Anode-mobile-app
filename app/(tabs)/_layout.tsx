@@ -27,30 +27,21 @@ export default function TabLayout() {
       <Tabs.Screen
         name="explore"
         options={{
-          title: 'Assets',
-          tabBarIcon: ({ color }) => <Ionicons name="bar-chart-outline" size={24} color={color} />,
+          title: 'Explore',
+          tabBarIcon: ({ color }) => <Ionicons name="compass-outline" size={24} color={color} />,
         }}
       />
       <Tabs.Screen
         name="top-stories"
-        options={{
-          title: 'Stories',
-          tabBarIcon: ({ color }) => <Ionicons name="newspaper-outline" size={24} color={color} />,
-        }}
+        options={{ href: null }}
       />
       <Tabs.Screen
         name="daily-recaps"
-        options={{
-          title: 'Recaps',
-          tabBarIcon: ({ color }) => <Ionicons name="calendar-outline" size={24} color={color} />,
-        }}
+        options={{ href: null }}
       />
       <Tabs.Screen
         name="policy-updates"
-        options={{
-          title: 'Policy',
-          tabBarIcon: ({ color }) => <Ionicons name="document-text-outline" size={24} color={color} />,
-        }}
+        options={{ href: null }}
       />
       <Tabs.Screen
         name="portfolio"
@@ -58,6 +49,15 @@ export default function TabLayout() {
           title: 'Portfolio',
           tabBarIcon: ({ color, focused }) => (
             <Ionicons name={focused ? 'pie-chart' : 'pie-chart-outline'} size={24} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="trade"
+        options={{
+          title: 'Trade',
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'swap-horizontal' : 'swap-horizontal-outline'} size={24} color={color} />
           ),
         }}
       />

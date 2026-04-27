@@ -5,11 +5,13 @@ const API_BASE = process.env.EXPO_PUBLIC_API_URL;
 export type GovernmentPolicy = {
   id: string;
   title: string;
-  summary: string;
-  publisher: string;
+  content: string;
+  agency_short: string;
+  agency_long: string;
+  region: string;
+  tags: string[];
   published_at: string;
   url: string;
-  image_url?: string;
 };
 
 export function useGovPolicies() {

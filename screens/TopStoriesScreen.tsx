@@ -3,13 +3,12 @@ import {
   ActivityIndicator,
   FlatList,
   SafeAreaView,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
-  useColorScheme,
+  useColorScheme
 } from 'react-native';
 
 import { Ionicons } from '@expo/vector-icons';
@@ -21,18 +20,6 @@ import { NewsStory } from '@/types/explore';
 
 const API_BASE = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
 const PAGE_SIZE = 20;
-
-// Predefined tag labels (mirrors the web app's tags list)
-const PREDEFINED_TAGS = [
-  { id: 'regulation', label: 'Regulation' },
-  { id: 'defi', label: 'DeFi' },
-  { id: 'nft', label: 'NFT' },
-  { id: 'market', label: 'Market' },
-  { id: 'blockchain', label: 'Blockchain' },
-  { id: 'adoption', label: 'Adoption' },
-  { id: 'security', label: 'Security' },
-  { id: 'mining', label: 'Mining' },
-];
 
 export default function TopStoriesScreen() {
   const dark = useColorScheme() === 'dark';
@@ -46,17 +33,14 @@ export default function TopStoriesScreen() {
 
   // Filters
   const [search, setSearch] = useState('');
-  const [activeTags, setActiveTags] = useState<string[]>([]);
   const [activePublisher, setActivePublisher] = useState<string | null>(null);
   const [selected, setSelected] = useState<NewsStory | null>(null);
 
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchRef = useRef(search);
-  const tagsRef = useRef(activeTags);
   const publisherRef = useRef(activePublisher);
 
   searchRef.current = search;
-  tagsRef.current = activeTags;
   publisherRef.current = activePublisher;
 
   // ── Fetch ──────────────────────────────────────────────────────────────
@@ -64,7 +48,6 @@ export default function TopStoriesScreen() {
     async (
       pageToLoad: number,
       keyword: string,
-      tags: string[],
       publisher: string | null,
       reset: boolean
     ) => {
@@ -74,8 +57,6 @@ export default function TopStoriesScreen() {
         // let query = `locale=en&page=${pageToLoad}`;
         let query = `page=${pageToLoad}`;
         if (keyword) query += `&keyword=${encodeURIComponent(keyword)}`;
-        if (tags.length > 0)
-          query += `&tags=${tags.map((t) => t.replace(/\s+/g, '+')).join('-')}`;
         if (publisher) query += `&publisher=${encodeURIComponent(publisher)}`;
 
         const res = await fetch(`${API_BASE}/api/news/stories?${query}`);
@@ -97,14 +78,13 @@ export default function TopStoriesScreen() {
   );
 
   useEffect(() => {
-    fetchStories(1, search, activeTags, activePublisher, true);
+    fetchStories(1, search, activePublisher, true);
   }, [fetchStories]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const refetch = useCallback(() => {
     fetchStories(
       1,
       searchRef.current,
-      tagsRef.current,
       publisherRef.current,
       true
     );
@@ -115,36 +95,23 @@ export default function TopStoriesScreen() {
     setSearch(text);
     if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
     searchTimerRef.current = setTimeout(() => {
-      fetchStories(1, text, tagsRef.current, publisherRef.current, true);
+      fetchStories(1, text, publisherRef.current, true);
     }, 400);
-  };
-
-  // ── Tag toggle ─────────────────────────────────────────────────────────
-  const toggleTag = (tagId: string) => {
-    const next = activeTags.includes(tagId)
-      ? activeTags.filter((t) => t !== tagId)
-      : activeTags.length >= 2
-        ? activeTags
-        : [...activeTags, tagId];
-    setActiveTags(next);
-    fetchStories(1, searchRef.current, next, publisherRef.current, true);
   };
 
   // ── Clear all filters ──────────────────────────────────────────────────
   const clearFilters = () => {
-    setActiveTags([]);
     setActivePublisher(null);
-    fetchStories(1, searchRef.current, [], null, true);
+    fetchStories(1, searchRef.current, null, true);
   };
 
-  const hasFilters = activeTags.length > 0 || !!activePublisher;
+  const hasFilters =!!activePublisher;
 
   const loadMore = useCallback(() => {
     if (!hasMore || loadingMore || loading) return;
     fetchStories(
       page + 1,
       searchRef.current,
-      tagsRef.current,
       publisherRef.current,
       false
     );
@@ -199,86 +166,6 @@ export default function TopStoriesScreen() {
             )}
           </View>
         </View>
-
-        {/* Filter pills */}
-        <View style={s.filtersRow}>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={s.pillsContent}
-          >
-            {PREDEFINED_TAGS.map((tag) => {
-              const isActive = activeTags.includes(tag.id);
-              return (
-                <TouchableOpacity
-                  key={tag.id}
-                  style={[s.pill, isActive && s.pillActive]}
-                  onPress={() => toggleTag(tag.id)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[s.pillText, isActive && s.pillTextActive]}>
-                    {tag.label}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-          {hasFilters && (
-            <TouchableOpacity
-              style={s.clearBtn}
-              onPress={clearFilters}
-              activeOpacity={0.7}
-            >
-              <Text style={s.clearText}>Clear</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-
-        {/* Active filter pills summary */}
-        {hasFilters && (
-          <View style={s.activeFilters}>
-            {activeTags.map((t) => {
-              const tag = PREDEFINED_TAGS.find((p) => p.id === t);
-              return (
-                <View key={t} style={s.activeChip}>
-                  <Text style={s.activeChipText}>{tag?.label ?? t}</Text>
-                  <TouchableOpacity onPress={() => toggleTag(t)} hitSlop={4}>
-                    <Ionicons
-                      name="close"
-                      size={12}
-                      color={WatchlistColors.primary}
-                    />
-                  </TouchableOpacity>
-                </View>
-              );
-            })}
-            {activePublisher && (
-              <View style={s.activeChip}>
-                <Text style={s.activeChipText}>{activePublisher}</Text>
-                <TouchableOpacity
-                  onPress={() => {
-                    setActivePublisher(null);
-                    fetchStories(
-                      1,
-                      searchRef.current,
-                      tagsRef.current,
-                      null,
-                      true
-                    );
-                  }}
-                  hitSlop={4}
-                >
-                  <Ionicons
-                    name="close"
-                    size={12}
-                    color={WatchlistColors.primary}
-                  />
-                </TouchableOpacity>
-              </View>
-            )}
-          </View>
-        )}
-
         {/* Feed */}
         {loading ? (
           <View style={s.centered}>
