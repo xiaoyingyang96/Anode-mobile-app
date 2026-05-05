@@ -14,6 +14,7 @@ import {
   Image,
   Linking,
   Modal,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -22,7 +23,11 @@ import {
   TouchableWithoutFeedback,
   View,
 } from 'react-native';
-import { CandlestickChart } from 'react-native-wagmi-charts';
+
+const CandlestickChart =
+  Platform.OS === 'web'
+    ? null
+    : require('react-native-wagmi-charts').CandlestickChart;
 
 const UP = WatchlistColors.tickerUp;
 const DOWN = WatchlistColors.tickerDown;
@@ -341,22 +346,26 @@ function AssetDetailModal({ visible, onClose, dark, ticker, name }: {
           {loading ? (
             <ActivityIndicator size="large" color={WatchlistColors.primary} style={{ marginTop: 40 }} />
           ) : series.length >= 2 ? (
-            <CandlestickChart.Provider
-              data={series.map(p => ({
-                timestamp: new Date(p.datetime).getTime(),
-                open: p.open,
-                high: p.high,
-                low: p.low,
-                close: p.close,
-              }))}
-            >
-              <CandlestickChart height={200} width={320}>
-                <CandlestickChart.Candles />
-                <CandlestickChart.Crosshair>
-                  <CandlestickChart.Tooltip />
-                </CandlestickChart.Crosshair>
-              </CandlestickChart>
-            </CandlestickChart.Provider>
+            CandlestickChart ? (
+              <CandlestickChart.Provider
+                data={series.map(p => ({
+                  timestamp: new Date(p.datetime).getTime(),
+                  open: p.open,
+                  high: p.high,
+                  low: p.low,
+                  close: p.close,
+                }))}
+              >
+                <CandlestickChart height={200} width={320}>
+                  <CandlestickChart.Candles />
+                  <CandlestickChart.Crosshair>
+                    <CandlestickChart.Tooltip />
+                  </CandlestickChart.Crosshair>
+                </CandlestickChart>
+              </CandlestickChart.Provider>
+            ) : (
+              <Text style={{ color: textSub, marginTop: 40 }}>Chart preview is unavailable on web.</Text>
+            )
           ) : (
             <Text style={{ color: textSub, marginTop: 40 }}>No chart data available.</Text>
           )}

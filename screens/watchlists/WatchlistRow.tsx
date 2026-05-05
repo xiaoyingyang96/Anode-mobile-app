@@ -259,7 +259,12 @@ import {
   View,
 } from 'react-native';
 import Svg, { Polyline } from 'react-native-svg';
-import { CandlestickChart } from 'react-native-wagmi-charts';
+import { Platform } from 'react-native';
+
+const CandlestickChart =
+  Platform.OS === 'web'
+    ? null
+    : require('react-native-wagmi-charts').CandlestickChart;
 
 interface WatchlistRowProps {
   item: Row;
@@ -374,22 +379,26 @@ function DetailModal({ item, visible, onClose, dark }: {
           {/* Candlestick chart */}
           {item.series && item.series.length >= 2 && (
             <View style={[dmStyles.chartWrap, { borderColor: border }]}>
-              <CandlestickChart.Provider
-                data={item.series.map(p => ({
-                  timestamp: new Date(p.datetime).getTime(),
-                  open: p.open,
-                  high: p.high ?? p.close,
-                  low: p.low ?? p.close,
-                  close: p.close,
-                }))}
-              >
-                <CandlestickChart height={160} width={300}>
-                  <CandlestickChart.Candles />
-                  <CandlestickChart.Crosshair>
-                    <CandlestickChart.Tooltip />
-                  </CandlestickChart.Crosshair>
-                </CandlestickChart>
-              </CandlestickChart.Provider>
+              {CandlestickChart ? (
+                <CandlestickChart.Provider
+                  data={item.series.map(p => ({
+                    timestamp: new Date(p.datetime).getTime(),
+                    open: p.open,
+                    high: p.high ?? p.close,
+                    low: p.low ?? p.close,
+                    close: p.close,
+                  }))}
+                >
+                  <CandlestickChart height={160} width={300}>
+                    <CandlestickChart.Candles />
+                    <CandlestickChart.Crosshair>
+                      <CandlestickChart.Tooltip />
+                    </CandlestickChart.Crosshair>
+                  </CandlestickChart>
+                </CandlestickChart.Provider>
+              ) : (
+                <Text style={{ color: textSub }}>Chart preview is unavailable on web.</Text>
+              )}
             </View>
           )}
 

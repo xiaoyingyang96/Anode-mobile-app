@@ -6,6 +6,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Modal,
+  Platform,
   ScrollView,
   Text,
   TextInput,
@@ -13,7 +14,11 @@ import {
   View,
   useWindowDimensions
 } from 'react-native';
-import { CandlestickChart } from 'react-native-wagmi-charts';
+
+const CandlestickChart =
+  Platform.OS === 'web'
+    ? null
+    : require('react-native-wagmi-charts').CandlestickChart;
 
 const API_BASE = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
 const RANGES = ['1d', '5d', '1mo', '3mo', '1y'];
@@ -148,17 +153,23 @@ function ChartPanel({ selectedId, dark }: { selectedId: string; dark: boolean })
           </View>
         ) : chartData.length >= 2 ? (
           <>
-            <CandlestickChart.Provider data={chartData}>
-              <CandlestickChart height={240} width={width - 8}>
-                <CandlestickChart.Candles />
-                <CandlestickChart.Crosshair>
-                  <CandlestickChart.Tooltip />
-                </CandlestickChart.Crosshair>
-              </CandlestickChart>
-              <CandlestickChart.DatetimeText
-                style={{ color: dark ? '#AEB0B4' : '#4B5563', fontSize: 11, textAlign: 'center', marginTop: 4 }}
-              />
-            </CandlestickChart.Provider>
+            {CandlestickChart ? (
+              <CandlestickChart.Provider data={chartData}>
+                <CandlestickChart height={240} width={width - 8}>
+                  <CandlestickChart.Candles />
+                  <CandlestickChart.Crosshair>
+                    <CandlestickChart.Tooltip />
+                  </CandlestickChart.Crosshair>
+                </CandlestickChart>
+                <CandlestickChart.DatetimeText
+                  style={{ color: dark ? '#AEB0B4' : '#4B5563', fontSize: 11, textAlign: 'center', marginTop: 4 }}
+                />
+              </CandlestickChart.Provider>
+            ) : (
+              <View style={{ height: 240, alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={{ color: textSub }}>Chart preview is unavailable on web.</Text>
+              </View>
+            )}
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 8, marginTop: 4 }}>
               {[0, Math.floor(chartData.length / 3), Math.floor(chartData.length * 2 / 3), chartData.length - 1].map(i => (
                 <Text key={i} style={{ fontSize: 10, color: dark ? '#AEB0B4' : '#4B5563' }}>

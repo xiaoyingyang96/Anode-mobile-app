@@ -1,5 +1,7 @@
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import { supabase } from "@/lib/supabase";
+import {
+  fetchChatbotAssistant,
+} from "@/lib/chatbotPrice";
 import { Ionicons } from "@expo/vector-icons";
 import React, { useRef, useState } from "react";
 import {
@@ -35,43 +37,38 @@ export default function ChatBot() {
   ]);
   const flatListRef = useRef<FlatList>(null);
 
-  const handleSend = async () => {
-  if (!input.trim()) return;
+  const appendAssistantMessage = (text: string) => {
+    const botMsg: Message = {
+      id: (Date.now() + 1).toString(),
+      role: "assistant",
+      text,
+    };
 
-  const userMsg: Message = {
-    id: Date.now().toString(),
-    role: "user",
-    text: input.trim(),
+    setMessages((prev) => [...prev, botMsg]);
   };
 
-  setMessages((prev) => [...prev, userMsg]);
-  setInput("");
+  const handleSend = async () => {
+    if (!input.trim()) return;
 
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-    const { data, error } = await supabase.functions.invoke("function_chatbot", {
-      body: { message: userMsg.text },
-      headers: {
-        Authorization: `Bearer ${session?.access_token}`,
-    },
-});
-    const botMsg: Message = {
-      id: (Date.now() + 1).toString(),
-      role: "assistant",
-      text: error ? "Something went wrong, please try again." : data.reply,
+    const userMsg: Message = {
+      id: Date.now().toString(),
+      role: "user",
+      text: input.trim(),
     };
 
-    setMessages((prev) => [...prev, botMsg]);
-  } catch (e) {
-    console.log("catch error:", JSON.stringify(e));
-    const botMsg: Message = {
-      id: (Date.now() + 1).toString(),
-      role: "assistant",
-      text: "Something went wrong, please try again.",
-    };
-    setMessages((prev) => [...prev, botMsg]);
-  }
-};
+    setMessages((prev) => [...prev, userMsg]);
+    setInput("");
+
+    try {
+      const data = await fetchChatbotAssistant(userMsg.text);
+      appendAssistantMessage(data.reply);
+    } catch (e) {
+      console.log("catch error:", JSON.stringify(e));
+      const message =
+        e instanceof Error ? e.message : "Something went wrong, please try again.";
+      appendAssistantMessage(message);
+    }
+  };
 
   return (
     <>
