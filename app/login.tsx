@@ -1,6 +1,6 @@
+import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
-import { useColorScheme } from "@/hooks/use-color-scheme";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 import { Button } from "@/components/Button";
@@ -45,10 +45,6 @@ export default function LoginScreen() {
       subtitle="Sign in to your Anode account"
     >
       <ErrorMessage message={error} />
-      {/* Temporary NativeWind test */}
-      <Text className="mb-4 rounded-xl bg-red-500 px-4 py-3 text-center text-white">
-        NativeWind is working
-      </Text>
       
       <Input
         label="Email"
